@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>我的社交侦探日记 (修复版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: "YouYuan", "幼圆", "Comic Sans MS", "Chalkboard SE", sans-serif;
+            background-color: #f0f4f8;
+            overflow: hidden;
+            user-select: none;
+            overscroll-behavior: none;
+        }
+
+        #canvas-container {
+            background-color: #F9F7F2;
+            background-image: 
+                linear-gradient(#E1E1E1 1px, transparent 1px),
+                linear-gradient(90deg, #E1E1E1 1px, transparent 1px);
+            background-size: 20px 20px;
+            cursor: default;
+            touch-action: none; 
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        #canvas-container.mode-link {
+            cursor: crosshair;
+        }
+
+        .sidebar-item {
+            transition: transform 0.2s;
+            cursor: grab;
+            touch-action: none;
+        }
+        .sidebar-item:active {
+            cursor: grabbing;
+            transform: scale(1.2);
+        }
+
+        .emoji-btn {
+            cursor: pointer;
+            transition: transform 0.1s, background 0.1s;
+        }
+        .emoji-btn:hover, .emoji-btn:active {
+            transform: scale(1.2);
+            background-color: #edf2f7;
+            border-radius: 8px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 3px; }
+    </style>
+</head>
+<body class="h-screen flex flex-col text-gray-700">
+
+    <!-- 顶部导航栏 -->
+    <header class="bg-white shadow-sm z-10 px-4 py-2 flex justify-between items-center border-b-4 border-yellow-300 border-dashed h-16 shrink-0">
+        <div class="flex items-center gap-2">
+            <div class="text-2xl animate-bounce">🍊</div>
+            <div class="hidden sm:block">
+                <h1 class="text-lg font-bold text-gray-800">社交日记</h1>
+                <p class="text-xs text-gray-500" id="date-display">Loading...</p>
+            </div>
+        </div>
+
+        <div class="flex bg-gray-100 p-1 rounded-lg mx-2">
+            <button id="btn-move" onclick="app.setMode('move')" class="px-3 py-1 rounded-md text-sm font-bold bg-white shadow text-blue-600 transition flex items-center gap-1">
+                <span>✋</span> <span class="hidden sm:inline">移动</span>
+            </button>
+            <button id="btn-link" onclick="app.setMode('link')" class="px-3 py-1 rounded-md text-sm font-bold text-gray-500 hover:bg-gray-200 transition flex items-center gap-1">
+                <span>🔗</span> <span class="hidden sm:inline">连线</span>
+            </button>
+        </div>
+        
+        <div class="flex gap-1 sm:gap-2">
+            <!-- 修改了图标按钮的 title 以方便鼠标悬停查看功能 -->
+            <button onclick="app.clearBoard()" title="清空画板" class="px-3 py-1 bg-red-100 text-red-600 rounded-full hover:bg-red-200 text-xs font-bold">🗑️</button>
+            <button onclick="app.showImport()" title="读取日记" class="px-3 py-1 bg-purple-100 text-purple-600 rounded-full hover:bg-purple-200 text-xs font-bold">📥</button>
+            <button onclick="app.exportData()" title="保存日记" class="px-3 py-1 bg-green-100 text-green-600 rounded-full hover:bg-green-200 text-xs font-bold">📤</button>
+        </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
+        <!-- 左侧工具箱 -->
+        <aside class="w-16 sm:w-20 bg-white shadow-md flex flex-col items-center py-4 overflow-y-auto z-10 border-r border-gray-200 custom-scroll shrink-0">
+            
+            <div class="text-xs font-bold text-gray-400 mb-2">人物</div>
+            <div class="flex flex-col gap-3 mb-6">
+                <div class="sidebar-item w-10 h-10 rounded-full bg-red-100 border-2 border-red-300 flex items-center justify-center text-xl" 
+                     draggable="true" ondragstart="app.handleDragStart(event, 'person', '👦', '#FF6B6B')"
+                     ontouchstart="app.handleTouchDragStart(event, 'person', '👦', '#FF6B6B')">👦</div>
+                <div class="sidebar-item w-10 h-10 rounded-full bg-blue-100 border-2 border-blue-300 flex items-center justify-center text-xl" 
+                     draggable="true" ondragstart="app.handleDragStart(event, 'person', '👧', '#4ECDC4')"
+                     ontouchstart="app.handleTouchDragStart(event, 'person', '👧', '#4ECDC4')">👧</div>
+                <div class="sidebar-item w-10 h-10 rounded-full bg-gray-100 border-2 border-dashed border-gray-400 flex items-center justify-center text-lg text-gray-500 font-bold" 
+                     draggable="true" ondragstart="app.handleDragStart(event, 'person', 'SELECT_ME', 'RANDOM')"
+                     ontouchstart="app.handleTouchDragStart(event, 'person', 'SELECT_ME', 'RANDOM')">➕</div>
+            </div>
+
+            <div class="text-xs font-bold text-gray-400 mb-2">事件</div>
+            <div class="flex flex-col gap-3 mb-6">
+                <div class="sidebar-item w-10 h-10 rounded bg-white border-2 border-gray-300 flex items-center justify-center text-xl" 
+                     draggable="true" ondragstart="app.handleDragStart(event, 'event', '⚽', '#ffffff')"
+                     ontouchstart="app.handleTouchDragStart(event, 'event', '⚽', '#ffffff')">⚽</div>
+                <div class="sidebar-item w-10 h-10 rounded bg-white border-2 border-gray-300 flex items-center justify-center text-xl" 
+                     draggable="true" ondragstart="app.handleDragStart(event, 'event', '📝', '#ffffff')"
+                     ontouchstart="app.handleTouchDragStart(event, 'event', '📝', '#ffffff')">📝</div>
+                <div class="sidebar-item w-10 h-10 rounded bg-gray-100 border-2 border-dashed border-gray-400 flex items-center justify-center text-lg text-gray-500 font-bold" 
+                     draggable="true" ondragstart="app.handleDragStart(event, 'event', 'SELECT_ME', '#ffffff')"
+                     ontouchstart="app.handleTouchDragStart(event, 'event', 'SELECT_ME', '#ffffff')">➕</div>
+            </div>
+
+            <div class="text-xs font-bold text-gray-400 mb-2">结果</div>
+            <div class="flex flex-col gap-3 pb-6">
+                <div class="sidebar-item w-10 h-8 rounded-full bg-green-100 border-2 border-green-400 flex items-center justify-center text-lg" 
+                     draggable="true" ondragstart="app.handleDragStart(event, 'result', '😄', '#6BCB77')"
+                     ontouchstart="app.handleTouchDragStart(event, 'result', '😄', '#6BCB77')">😄</div>
+                <div class="sidebar-item w-10 h-8 rounded-full bg-gray-200 border-2 border-gray-400 flex items-center justify-center text-lg" 
+                     draggable="true" ondragstart="app.handleDragStart(event, 'result', '😢', '#A6A9B6')"
+                     ontouchstart="app.handleTouchDragStart(event, 'result', '😢', '#A6A9B6')">😢</div>
+                 <div class="sidebar-item w-10 h-8 rounded-full bg-gray-100 border-2 border-dashed border-gray-400 flex items-center justify-center text-lg text-gray-500 font-bold" 
+                     draggable="true" ondragstart="app.handleDragStart(event, 'result', 'SELECT_ME', '#FFD93D')"
+                     ontouchstart="app.handleTouchDragStart(event, 'result', 'SELECT_ME', '#FFD93D')">➕</div>
+            </div>
+        </aside>
+
+        <!-- 主画布 -->
+        <main id="canvas-container" class="flex-1 relative overflow-hidden" 
+              ondrop="app.handleDrop(event)" 
+              ondragover="app.handleDragOver(event)">
+            <canvas id="boardCanvas" class="absolute top-0 left-0 block"></canvas>
+            
+            <div id="mode-toast" class="absolute top-4 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white px-4 py-1 rounded-full text-sm shadow-lg opacity-0 transition-opacity pointer-events-none z-20 w-max">
+                已切换到连线模式
+            </div>
+        </main>
+    </div>
+
+    <!-- 模态框 -->
+    <div id="modal-overlay" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center backdrop-blur-sm px-4">
+        <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl transform transition-all">
+            <h2 id="modal-title" class="text-xl font-bold mb-4 text-gray-800">标题</h2>
+            <p id="modal-desc" class="text-sm text-gray-600 mb-4 hidden">确认？</p>
+            <textarea id="modal-input" class="w-full h-32 p-3 border border-gray-300 rounded-lg bg-gray-50 text-base focus:ring-2 focus:ring-blue-400 focus:outline-none resize-none mb-2"></textarea>
+            <div class="flex justify-end gap-3 mt-2">
+                <button onclick="app.closeModal()" class="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded font-medium">取消</button>
+                <button id="modal-action" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 font-bold shadow-md transition">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Emoji Picker -->
+    <div id="emoji-overlay" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center backdrop-blur-sm px-4">
+        <div class="bg-white rounded-xl p-4 w-full max-w-md shadow-2xl max-h-[80vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold text-gray-800">✨ 选择贴纸</h2>
+                <button onclick="document.getElementById('emoji-overlay').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 text-3xl p-2">&times;</button>
+            </div>
+            <div id="emoji-grid" class="grid grid-cols-6 gap-2 overflow-y-auto custom-scroll p-2 text-center"></div>
+        </div>
+    </div>
+
+    <script>
+        const app = (function() {
+            const canvas = document.getElementById('boardCanvas');
+            const ctx = canvas.getContext('2d');
+            const container = document.getElementById('canvas-container');
+            
+            // --- 常量与配置 ---
+            const STORAGE_KEY = 'kids_diary_clean_v2'; 
+            const EMOJI_LIB = {
+                person: ["👶","👧","🧒","👦","👩","🧑","👨","👵","🧓","👴","👲","👳","👮","👷","💂","🕵️","👩‍⚕️","🧑‍🏫","👨‍🏫","👩‍🎓","👨‍🎓","👩‍🍳","👨‍🍳","👩‍🔧","👨‍🔧","🦸","🦹","🧙","🧚","🧛","🧜","🧝","🧞","🧟","👻","👽","🤖","👸","🤴"],
+                event: ["⚽","🏀","🏈","⚾","🎾","🏐","🏉","🎱","🏓","🏸","🥅","🥊","🥋","🎽","🛹","🛼","🎨","🎬","🎤","🎧","🎼","🎹","🥁","🎷","🎺","🎸","🎻","🎲","♟","🎯","🎳","🎮","🎰","🧩","📝","📚","🎒","🏫","🚌","🥪","🍱","🎂","🥤","💊","💉","🌡","🧹","🧺","🛒","🎁","📱","💻","📺","📷","📹","🕹","🧸","🛍"],
+                result: ["😀","😃","😄","😁","😆","😅","🤣","😂","🙂","🙃","😉","😊","😇","🥰","😍","🤩","😘","😗","😚","😙","😋","😛","😜","🤪","😝","🤑","🤗","🤭","🤫","🤔","🤐","🤨","😐","😑","😶","😏","😒","🙄","😬","🤥","😌","😔","😪","🤤","😴","😷","🤒","🤕","🤢","🤮","🤧","🥵","🥶","🥴","😵","🤯","🤠","🥳","😎","🤓","🧐","😕","😟","🙁","😮","😯","😲","😳","🥺","😦","😧","😨","😰","😥","😢","😭","😱","😖","😣","😞","😓","😩","😫","🥱","😤","😡","😠","🤬","😈","👿","💀","☠","💩","🤡","👹","👺"]
+            };
+            const LABEL_FONT_SIZE = 16;
+            const LABEL_LINE_HEIGHT = 24;
+            const LABEL_MAX_WIDTH = 120;
+
+            // --- 状态 ---
+            let nodes = [];
+            let links = [];
+            let width, height;
+            let mode = 'move';
+            let dragItemData = null;
+            let pendingNodeCreation = null;
+
+            const state = {
+                draggingNode: null,
+                connectingNode: null,
+                hoverNode: null,
+                hoverLink: null,
+                dragOffset: { x: 0, y: 0 },
+                mouseX: 0,
+                mouseY: 0,
+                lastTouchTime: 0
+            };
+
+            function init() {
+                resize();
+                window.addEventListener('resize', resize);
+                setupEvents();
+                updateDate();
+                loadAutoSave();
+                ensureMeNode();
+                requestAnimationFrame(animate);
+            }
+
+            function ensureMeNode() {
+                if (!nodes.find(n => n.id === 'USER_ME')) {
+                    nodes.push({
+                        id: 'USER_ME',
+                        x: width / 2,
+                        y: height / 2,
+                        type: 'person',
+                        emoji: '🍊',
+                        color: '#FF9F43',
+                        label: '我'
+                    });
+                }
+            }
+
+            function updateDate() {
+                const now = new Date();
+                document.getElementById('date-display').innerText = now.toLocaleDateString('zh-CN', { weekday: 'short', year: '2-digit', month: 'numeric', day: 'numeric' });
+            }
+
+            function resize() {
+                width = container.clientWidth;
+                height = container.clientHeight;
+                canvas.width = width;
+                canvas.height = height;
+            }
+
+            function setMode(newMode) {
+                mode = newMode;
+                const btnMove = document.getElementById('btn-move');
+                const btnLink = document.getElementById('btn-link');
+                const toast = document.getElementById('mode-toast');
+                
+                const activeClass = "bg-white shadow text-blue-600";
+                const inactiveClass = "text-gray-500 hover:bg-gray-200";
+                
+                if (mode === 'move') {
+                    btnMove.className = `px-3 py-1 rounded-md text-sm font-bold transition flex items-center gap-1 ${activeClass}`;
+                    btnLink.className = `px-3 py-1 rounded-md text-sm font-bold transition flex items-center gap-1 ${inactiveClass}`;
+                    container.classList.remove('mode-link');
+                } else {
+                    btnLink.className = `px-3 py-1 rounded-md text-sm font-bold transition flex items-center gap-1 ${activeClass}`;
+                    btnMove.className = `px-3 py-1 rounded-md text-sm font-bold transition flex items-center gap-1 ${inactiveClass}`;
+                    container.classList.add('mode-link');
+                    toast.innerText = "🔗 连线模式";
+                    toast.style.opacity = '1';
+                    setTimeout(() => toast.style.opacity = '0', 2000);
+                }
+            }
+
+            // --- 数据清洗 ---
+            function getCleanData() {
+                const cleanNodes = nodes.map(n => ({
+                    id: n.id,
+                    x: Math.round(n.x),
+                    y: Math.round(n.y),
+                    type: n.type,
+                    emoji: n.emoji,
+                    color: n.color,
+                    label: n.label
+                }));
+                const cleanLinks = links.map(l => ({
+                    id: l.id,
+                    source: l.source,
+                    target: l.target,
+                    label: l.label
+                }));
+                return { nodes: cleanNodes, links: cleanLinks, timestamp: Date.now() };
+            }
+
+            // --- 绘图 ---
+            function animate() {
+                ctx.clearRect(0, 0, width, height);
+                links.forEach(link => drawLink(link));
+                if (state.connectingNode) drawTempLink(state.connectingNode, state.mouseX, state.mouseY);
+                nodes.forEach(node => drawNode(node));
+                requestAnimationFrame(animate);
+            }
+
+            function drawNode(node) {
+                const isHover = state.hoverNode === node;
+                const isDragging = state.draggingNode === node;
+                const isMe = node.id === 'USER_ME';
+                
+                ctx.save();
+                ctx.translate(node.x, node.y);
+                if (isDragging) ctx.scale(1.15, 1.15);
+
+                ctx.shadowColor = 'rgba(0,0,0,0.15)';
+                ctx.shadowBlur = isHover || isMe ? 15 : 5;
+                ctx.shadowOffsetY = isHover || isMe ? 8 : 3;
+
+                ctx.beginPath();
+                if (node.type === 'person') ctx.arc(0, 0, 32, 0, Math.PI * 2);
+                else if (node.type === 'event') ctx.roundRect(-30, -30, 60, 60, 10);
+                else ctx.ellipse(0, 0, 34, 24, 0, 0, Math.PI * 2);
+                
+                ctx.fillStyle = node.color || '#fff';
+                ctx.fill();
+                ctx.lineWidth = isMe ? 4 : 3;
+                ctx.strokeStyle = '#fff';
+                ctx.stroke();
+
+                ctx.shadowColor = 'transparent';
+                ctx.font = "34px Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(node.emoji, 0, 2);
+
+                drawMultiLineText(node.label, 0, 42, true);
+
+                if (state.connectingNode && isHover && state.connectingNode !== node) {
+                    ctx.strokeStyle = "#4299e1";
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 48, 0, Math.PI*2);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
+
+            function drawLink(link) {
+                const source = nodes.find(n => n.id === link.source);
+                const target = nodes.find(n => n.id === link.target);
+                if (!source || !target) return;
+
+                const isHover = state.hoverLink === link;
+                const dx = target.x - source.x;
+                const dy = target.y - source.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                const cpX = (source.x + target.x) / 2;
+                const cpY = (source.y + target.y) / 2 + (dist * 0.2); 
+
+                ctx.beginPath();
+                ctx.moveTo(source.x, source.y);
+                ctx.quadraticCurveTo(cpX, cpY, target.x, target.y);
+                ctx.lineWidth = isHover ? 6 : 3;
+                ctx.strokeStyle = isHover ? '#FF6B6B' : '#CBD5E0';
+                ctx.lineCap = 'round';
+                ctx.stroke();
+
+                if (link.label) {
+                    ctx.save();
+                    ctx.translate(cpX, cpY); 
+                    drawMultiLineText(link.label, 0, 0, false, isHover);
+                    ctx.restore();
+                }
+                drawArrow(cpX, cpY, target.x, target.y, ctx.strokeStyle);
+            }
+
+            function drawMultiLineText(text, x, y, isNodeLabel, isLinkHover) {
+                ctx.font = `bold ${LABEL_FONT_SIZE}px 'YouYuan', sans-serif`;
+                const lines = getLines(ctx, text, LABEL_MAX_WIDTH);
+                const padding = 10;
+                const maxW = Math.max(...lines.map(l => ctx.measureText(l).width));
+                const boxW = maxW + padding * 2;
+                const boxH = (lines.length * LABEL_LINE_HEIGHT) + padding;
+                
+                ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+                ctx.beginPath();
+                const startY = isNodeLabel ? y : y - boxH/2;
+                ctx.roundRect(x - boxW/2, startY, boxW, boxH, 8);
+                ctx.fill();
+                
+                if (!isNodeLabel) {
+                    ctx.lineWidth = 1;
+                    ctx.strokeStyle = isLinkHover ? '#FF6B6B' : '#CBD5E0';
+                    ctx.stroke();
+                }
+
+                ctx.fillStyle = "#4a5568";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "top";
+                lines.forEach((line, i) => {
+                    ctx.fillText(line, x, startY + padding/2 + (i * LABEL_LINE_HEIGHT));
+                });
+            }
+
+            function getLines(ctx, text, maxWidth) {
+                const chars = text.split('');
+                let lines = [], cur = chars[0];
+                for (let i = 1; i < chars.length; i++) {
+                    if (ctx.measureText(cur + chars[i]).width < maxWidth) cur += chars[i];
+                    else { lines.push(cur); cur = chars[i]; }
+                }
+                lines.push(cur);
+                return lines;
+            }
+
+            function drawTempLink(s, mx, my) {
+                ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(mx, my);
+                ctx.lineWidth = 2; ctx.strokeStyle = '#4299e1'; ctx.setLineDash([5, 5]); ctx.stroke(); ctx.setLineDash([]);
+                ctx.beginPath(); ctx.arc(mx, my, 5, 0, Math.PI*2); ctx.fillStyle = '#4299e1'; ctx.fill();
+            }
+
+            function drawArrow(fx, fy, tx, ty, color) {
+                const angle = Math.atan2(ty - fy, tx - fx);
+                const offset = 35;
+                const ex = tx - Math.cos(angle) * offset, ey = ty - Math.sin(angle) * offset;
+                ctx.beginPath(); ctx.moveTo(ex, ey);
+                ctx.lineTo(ex - 12 * Math.cos(angle - Math.PI/6), ey - 12 * Math.sin(angle - Math.PI/6));
+                ctx.lineTo(ex - 12 * Math.cos(angle + Math.PI/6), ey - 12 * Math.sin(angle + Math.PI/6));
+                ctx.fillStyle = color; ctx.fill();
+            }
+
+            // --- 事件处理 ---
+
+            function getPointerPos(e) {
+                const rect = canvas.getBoundingClientRect();
+                if (e.touches && e.touches.length > 0) {
+                    return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+                }
+                return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+            }
+
+            function handleStart(e) {
+                if(e.type === 'touchstart') {
+                    const now = Date.now();
+                    if (now - state.lastTouchTime < 300) {
+                        handleDoubleClick(e);
+                        return;
+                    }
+                    state.lastTouchTime = now;
+                }
+
+                const { x, y } = getPointerPos(e);
+                const clickedNode = getNodeAt(x, y);
+                
+                if (clickedNode) {
+                    if (mode === 'link' || e.shiftKey) {
+                        state.connectingNode = clickedNode;
+                        state.draggingNode = null;
+                    } else {
+                        state.draggingNode = clickedNode;
+                        state.dragOffset = { x: x - clickedNode.x, y: y - clickedNode.y };
+                    }
+                }
+            }
+
+            function handleMove(e) {
+                e.preventDefault();
+                const { x, y } = getPointerPos(e);
+                state.mouseX = x;
+                state.mouseY = y;
+                state.hoverNode = getNodeAt(x, y);
+                state.hoverLink = getLinkAt(x, y);
+
+                if (!e.touches) {
+                    if (state.connectingNode) canvas.style.cursor = 'crosshair';
+                    else if (state.hoverNode) canvas.style.cursor = (mode === 'link' || e.shiftKey) ? 'crosshair' : 'move';
+                    else if (state.hoverLink) canvas.style.cursor = 'pointer';
+                    else canvas.style.cursor = 'default';
+                }
+
+                if (state.draggingNode) {
+                    state.draggingNode.x = x - state.dragOffset.x;
+                    state.draggingNode.y = y - state.dragOffset.y;
+                }
+            }
+
+            function handleEnd(e) {
+                const x = state.mouseX;
+                const y = state.mouseY;
+
+                if (state.connectingNode) {
+                    const targetNode = getNodeAt(x, y);
+                    if (targetNode && targetNode !== state.connectingNode) {
+                        createLink(state.connectingNode, targetNode);
+                    }
+                    state.connectingNode = null;
+                }
+                if (state.draggingNode) {
+                    state.draggingNode = null;
+                    saveAutoSave();
+                }
+            }
+
+            function handleDoubleClick(e) {
+                e.preventDefault();
+                const { x, y } = getPointerPos(e);
+                const clickedNode = getNodeAt(x, y);
+                const clickedLink = getLinkAt(x, y);
+
+                if (clickedNode) {
+                    showDialog({
+                        title: "✏️ 修改文字",
+                        inputValue: clickedNode.label,
+                        onConfirm: (val) => { if(val) { clickedNode.label = val.trim(); saveAutoSave(); } },
+                        confirmText: "确定"
+                    });
+                } else if (clickedLink) {
+                    showDialog({
+                        title: "✏️ 互动描述",
+                        inputValue: clickedLink.label,
+                        onConfirm: (val) => { if(val) { clickedLink.label = val.trim(); saveAutoSave(); } },
+                        confirmText: "确定"
+                    });
+                }
+            }
+
+            function setupEvents() {
+                canvas.addEventListener('mousedown', handleStart);
+                canvas.addEventListener('mousemove', handleMove);
+                canvas.addEventListener('mouseup', handleEnd);
+                canvas.addEventListener('dblclick', handleDoubleClick);
+                canvas.addEventListener('contextmenu', handleContextMenu);
+
+                canvas.addEventListener('touchstart', handleStart, { passive: false });
+                canvas.addEventListener('touchmove', handleMove, { passive: false });
+                canvas.addEventListener('touchend', handleEnd);
+            }
+
+            function handleContextMenu(e) {
+                e.preventDefault();
+                const { x, y } = getPointerPos(e);
+                const clickedNode = getNodeAt(x, y);
+                const clickedLink = getLinkAt(x, y);
+
+                if (clickedNode) {
+                    if (clickedNode.id === 'USER_ME') {
+                        alert("这个是你自己，不能删除哦！");
+                        return;
+                    }
+                    showDialog({
+                        title: "🗑️ 删除贴纸",
+                        desc: `确定要删除 "${clickedNode.label}" 吗？`,
+                        isDelete: true,
+                        onConfirm: () => {
+                            nodes = nodes.filter(n => n !== clickedNode);
+                            links = links.filter(l => l.source !== clickedNode.id && l.target !== clickedNode.id);
+                            saveAutoSave();
+                        },
+                        confirmText: "删除"
+                    });
+                } else if (clickedLink) {
+                    showDialog({
+                        title: "🗑️ 删除连线",
+                        desc: "确定要删除这条连线吗？",
+                        isDelete: true,
+                        onConfirm: () => {
+                            links = links.filter(l => l !== clickedLink);
+                            saveAutoSave();
+                        },
+                        confirmText: "删除"
+                    });
+                }
+            }
+
+            function getNodeAt(x, y) {
+                for (let i = nodes.length - 1; i >= 0; i--) {
+                    const n = nodes[i];
+                    if (Math.abs(x - n.x) < 45 && y > n.y - 40 && y < n.y + 70) return n;
+                }
+                return null;
+            }
+            function getLinkAt(x, y) {
+                for (let l of links) {
+                    const s = nodes.find(n => n.id === l.source);
+                    const t = nodes.find(n => n.id === l.target);
+                    if (!s || !t) continue;
+                    const cx = (s.x + t.x) / 2, cy = (s.y + t.y) / 2 + (Math.sqrt((t.x - s.x)**2 + (t.y - s.y)**2) * 0.2);
+                    if (Math.sqrt((x - cx)**2 + (y - cy)**2) < 30) return l;
+                }
+                return null;
+            }
+
+            // --- 拖拽创建 ---
+            function handleDragStart(e, type, emoji, color) {
+                dragItemData = { type, emoji, color };
+                e.dataTransfer.effectAllowed = 'copy';
+            }
+            function handleDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }
+            function handleDrop(e) {
+                e.preventDefault();
+                if (!dragItemData) return;
+                const { x, y } = getPointerPos(e);
+                if (dragItemData.emoji === 'SELECT_ME') {
+                    pendingNodeCreation = { type: dragItemData.type, x, y };
+                    showEmojiPicker(dragItemData.type);
+                } else {
+                    createNode(dragItemData.type, dragItemData.emoji, dragItemData.color, x, y);
+                }
+                dragItemData = null;
+            }
+            
+            function handleTouchDragStart(e, type, emoji, color) {
+                e.preventDefault();
+                const x = width/2 + (Math.random()*40 - 20);
+                const y = height/2 + (Math.random()*40 - 20);
+                if (emoji === 'SELECT_ME') {
+                    pendingNodeCreation = { type, x, y };
+                    showEmojiPicker(type);
+                } else {
+                    createNode(type, emoji, color, x, y);
+                    const t = document.getElementById('mode-toast');
+                    t.innerText = "已添加到画布中心"; t.style.opacity = 1;
+                    setTimeout(()=>t.style.opacity=0, 1500);
+                }
+            }
+
+            function createNode(type, emoji, color, x, y) {
+                const id = Date.now().toString(36) + Math.random().toString(36).slice(2);
+                let label = type === 'person' ? "新朋友" : (type === 'event' ? "新事件" : "心情");
+                nodes.push({ id, x, y, type, emoji, color, label });
+                saveAutoSave();
+            }
+            function createLink(nA, nB) {
+                if (links.find(l => l.source === nA.id && l.target === nB.id)) return;
+                links.push({ id: Date.now().toString(), source: nA.id, target: nB.id, label: "互动" });
+                saveAutoSave();
+            }
+
+            // --- UI & 存取 ---
+            function showEmojiPicker(type) {
+                const grid = document.getElementById('emoji-grid');
+                grid.innerHTML = '';
+                EMOJI_LIB[type].forEach(emoji => {
+                    const btn = document.createElement('div');
+                    btn.innerText = emoji;
+                    btn.className = "emoji-btn text-3xl h-12 w-12 flex items-center justify-center";
+                    btn.onclick = () => {
+                        let color = '#fff';
+                        if (type === 'person') color = ['#FF6B6B', '#4ECDC4', '#FFD93D', '#a29bfe'][Math.floor(Math.random()*4)];
+                        if (type === 'result') color = '#FFD93D';
+                        if (pendingNodeCreation) createNode(type, emoji, color, pendingNodeCreation.x, pendingNodeCreation.y);
+                        document.getElementById('emoji-overlay').classList.add('hidden');
+                        pendingNodeCreation = null;
+                    }
+                    grid.appendChild(btn);
+                });
+                document.getElementById('emoji-overlay').classList.remove('hidden');
+            }
+
+            // 修复了弹窗逻辑：增加了 confirmText 参数，并强制更新 innerText
+            function showDialog({ title, desc, inputValue, onConfirm, isDelete, confirmText }) {
+                const el = (id) => document.getElementById(id);
+                el('modal-overlay').classList.remove('hidden');
+                el('modal-title').innerText = title;
+                const btn = el('modal-action');
+
+                if (isDelete) {
+                    el('modal-input').classList.add('hidden');
+                    el('modal-desc').classList.remove('hidden');
+                    el('modal-desc').innerText = desc;
+                    btn.className = "px-4 py-2 bg-red-500 text-white rounded font-bold shadow-md";
+                } else {
+                    el('modal-input').classList.remove('hidden');
+                    el('modal-desc').classList.add('hidden');
+                    el('modal-input').value = inputValue || "";
+                    btn.className = "px-4 py-2 bg-blue-500 text-white rounded font-bold shadow-md";
+                }
+
+                // 关键修复：强制更新按钮文字
+                btn.innerText = confirmText || (isDelete ? "删除" : "确定");
+
+                btn.onclick = () => {
+                    if (!isDelete) onConfirm(el('modal-input').value);
+                    else onConfirm();
+                    closeModal();
+                }
+            }
+            function closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
+            
+            function clearBoard() {
+                showDialog({
+                    title: "🗑️ 重置画板",
+                    desc: "只保留“我”，清空其他所有内容？",
+                    isDelete: true,
+                    onConfirm: () => { nodes = []; links = []; ensureMeNode(); saveAutoSave(); },
+                    confirmText: "清空" // 修复了这里的文案
+                });
+            }
+
+            // 升级了序列化方法：解决中文乱码问题
+            function utf8_to_b64(str) {
+                return window.btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g,
+                    function toSolidBytes(match, p1) {
+                        return String.fromCharCode('0x' + p1);
+                }));
+            }
+            function b64_to_utf8(str) {
+                return decodeURIComponent(atob(str).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+            }
+            
+            function saveAutoSave() {
+                const data = getCleanData();
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            }
+            function loadAutoSave() {
+                try {
+                    const raw = localStorage.getItem(STORAGE_KEY);
+                    if (raw) {
+                        const data = JSON.parse(raw);
+                        nodes = data.nodes || [];
+                        links = data.links || [];
+                    }
+                } catch(e) {}
+            }
+
+            function exportData() {
+                const data = getCleanData();
+                const code = utf8_to_b64(JSON.stringify(data));
+                showDialog({
+                    title: "📤 保存日记 (已修复中文)",
+                    inputValue: code,
+                    onConfirm: () => {
+                        document.getElementById('modal-input').select();
+                        document.execCommand('copy');
+                        alert("复制成功！");
+                    },
+                    confirmText: "复制" // 通过参数传递按钮文字，不再修改 DOM
+                });
+            }
+
+            function showImport() {
+                showDialog({
+                    title: "📥 读取回忆",
+                    inputValue: "",
+                    onConfirm: (val) => {
+                        if (!val) return;
+                        try {
+                            const data = JSON.parse(b64_to_utf8(val));
+                            if (data.nodes) {
+                                nodes = data.nodes; links = data.links || [];
+                                ensureMeNode(); saveAutoSave();
+                                alert("读取成功！");
+                            }
+                        } catch (e) { alert("数据格式错误，可能是旧版本的代码"); console.error(e); }
+                    },
+                    confirmText: "读取"
+                });
+                document.getElementById('modal-input').placeholder = "粘贴代码...";
+            }
+
+            return { 
+                init, setMode, handleDragStart, handleDragOver, handleDrop, 
+                handleTouchDragStart, 
+                clearBoard, exportData, showImport, closeModal, showEmojiPicker 
+            };
+        })();
+
+        window.onload = app.init;
+    </script>
+</body>
+</html>
