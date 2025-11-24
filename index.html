@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -9,26 +10,24 @@
         @import url('https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap');
 
         body {
-            font-family: "ZCOOL KuaiLe", "YouYuan", "幼圆", sans-serif; /* 使用更卡通的字体 */
+            font-family: "ZCOOL KuaiLe", "YouYuan", "幼圆", sans-serif;
             background-color: #f0f4f8;
             overflow: hidden;
             user-select: none;
             -webkit-user-select: none;
             overscroll-behavior: none;
-            touch-action: none; /* 全局禁止默认触摸行为 */
+            touch-action: none;
         }
 
-        /* 允许输入框选中 */
         input, textarea {
             user-select: text !important;
             -webkit-user-select: text !important;
-            touch-action: auto !important; /* 恢复输入框的触摸操作 */
+            touch-action: auto !important;
         }
 
         #canvas-container {
             background-color: #F9F7F2;
-            background-image: 
-                radial-gradient(#CBD5E0 1px, transparent 1px);
+            background-image: radial-gradient(#CBD5E0 1px, transparent 1px);
             background-size: 20px 20px;
             cursor: default;
             touch-action: none; 
@@ -44,7 +43,6 @@
         .sidebar-item:active { transform: scale(0.9); }
         .sidebar-item:hover { transform: scale(1.05); }
 
-        /* 增加点击反馈 */
         .btn-press:active { transform: scale(0.95); }
 
         .custom-scroll::-webkit-scrollbar { width: 6px; }
@@ -58,49 +56,56 @@
         }
         .diary-card:hover { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
         
-        /* 模态框动画 */
         .modal-enter { animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         @keyframes modalPop {
             0% { opacity: 0; transform: scale(0.8); }
             100% { opacity: 1; transform: scale(1); }
+        }
+
+        /* 移动端底部导航栏样式 */
+        .mobile-nav-btn.active {
+            color: #2563eb;
+            background-color: #eff6ff;
         }
     </style>
 </head>
 <body class="h-screen flex flex-col text-gray-700 font-medium">
 
     <!-- 顶部导航栏 -->
-    <header class="bg-white shadow-sm z-20 px-4 py-2 flex justify-between items-center border-b-4 border-yellow-300 border-dashed h-16 shrink-0 relative">
-        <div class="flex items-center gap-3 select-none" onclick="app.toggleView('board')">
-            <div class="text-3xl filter drop-shadow-sm cursor-pointer hover:scale-110 transition">🕵️</div>
-            <div class="hidden sm:block cursor-pointer">
+    <header class="bg-white shadow-sm z-20 px-3 sm:px-4 py-2 flex justify-between items-center border-b-4 border-yellow-300 border-dashed h-16 shrink-0 relative">
+        <!-- 左侧：Logo 和 设置 -->
+        <div class="flex items-center gap-2 select-none">
+            <div class="text-3xl filter drop-shadow-sm cursor-pointer hover:scale-110 transition" onclick="app.showSettings()">🕵️</div>
+            <div class="hidden sm:block cursor-pointer" onclick="app.toggleView('board')">
                 <h1 class="text-xl text-gray-800 tracking-wide">侦探日记</h1>
                 <p class="text-xs text-gray-400 font-sans" id="date-display">Loading...</p>
             </div>
+            <!-- 设置/备份按钮 -->
+            <button onclick="app.showSettings()" class="sm:hidden w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500">⚙️</button>
         </div>
 
-        <!-- 中间切换器 -->
-        <div class="flex bg-gray-100 p-1 rounded-xl absolute left-1/2 transform -translate-x-1/2 shadow-inner">
-            <button id="nav-board" onclick="app.toggleView('board')" class="flex items-center gap-1 px-4 py-2 rounded-lg text-sm transition-all shadow-sm bg-white text-blue-600 ring-1 ring-black/5">
+        <!-- 中间切换器 (仅桌面端显示) -->
+        <div class="hidden md:flex bg-gray-100 p-1 rounded-xl absolute left-1/2 transform -translate-x-1/2 shadow-inner">
+            <button id="nav-board-desktop" onclick="app.toggleView('board')" class="flex items-center gap-1 px-4 py-2 rounded-lg text-sm transition-all shadow-sm bg-white text-blue-600 ring-1 ring-black/5">
                 <span>🎨</span> 画板
             </button>
-            <button id="nav-diary" onclick="app.toggleView('diary')" class="flex items-center gap-1 px-4 py-2 rounded-lg text-sm transition-all text-gray-500 hover:bg-gray-200/50">
+            <button id="nav-diary-desktop" onclick="app.toggleView('diary')" class="flex items-center gap-1 px-4 py-2 rounded-lg text-sm transition-all text-gray-500 hover:bg-gray-200/50">
                 <span>📖</span> 日记
             </button>
         </div>
         
-        <!-- 右侧工具栏 -->
+        <!-- 右侧工具栏 (始终显示，因为Nav在移动端移到底部了) -->
         <div id="board-tools" class="flex gap-2 items-center">
-            <!-- 模式切换：仅在画板显示 -->
             <div class="flex bg-gray-100 p-1 rounded-lg">
-                <button id="btn-move" onclick="app.setMode('move')" title="移动模式" class="w-8 h-8 flex items-center justify-center rounded-md bg-white shadow text-blue-600 transition-all text-lg">✋</button>
-                <button id="btn-link" onclick="app.setMode('link')" title="连线模式" class="w-8 h-8 flex items-center justify-center rounded-md text-gray-400 hover:text-blue-500 transition-all text-lg">🔗</button>
+                <button id="btn-move" onclick="app.setMode('move')" title="移动模式" class="w-9 h-9 flex items-center justify-center rounded-md bg-white shadow text-blue-600 transition-all text-xl">✋</button>
+                <button id="btn-link" onclick="app.setMode('link')" title="连线模式" class="w-9 h-9 flex items-center justify-center rounded-md text-gray-400 hover:text-blue-500 transition-all text-xl">🔗</button>
             </div>
 
             <div class="w-px h-6 bg-gray-300 mx-1"></div>
 
             <button onclick="app.clearBoard()" title="清空" class="btn-press w-9 h-9 bg-red-50 text-red-500 rounded-full hover:bg-red-100 flex items-center justify-center text-lg border border-red-100">🗑️</button>
             <button onclick="app.saveToDiary()" title="保存" class="btn-press px-3 py-1.5 bg-green-400 text-white rounded-full hover:bg-green-500 shadow-lg shadow-green-200 text-sm flex items-center gap-1 border-b-2 border-green-600 active:border-b-0 active:translate-y-[2px]">
-                <span>💾</span> 存日记
+                <span>💾</span> <span class="hidden sm:inline">存日记</span>
             </button>
         </div>
     </header>
@@ -110,32 +115,33 @@
         <!-- 视图1: 画板模式 -->
         <div id="view-board" class="flex w-full h-full absolute inset-0 z-0">
             <!-- 左侧工具箱 -->
-            <aside class="w-18 sm:w-20 bg-white shadow-xl flex flex-col items-center py-6 overflow-y-auto z-10 border-r border-gray-100 custom-scroll shrink-0 space-y-8 select-none">
+            <aside class="w-16 sm:w-20 bg-white shadow-xl flex flex-col items-center py-4 sm:py-6 overflow-y-auto z-10 border-r border-gray-100 custom-scroll shrink-0 space-y-6 select-none pb-24">
                 
-                <div class="flex flex-col gap-3 w-full items-center">
-                    <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">我的小队</div>
-                    <div class="sidebar-item w-12 h-12 rounded-xl border-2 border-dashed border-indigo-300 bg-indigo-50 flex flex-col items-center justify-center shadow-sm cursor-pointer"
+                <div class="flex flex-col gap-2 w-full items-center group relative">
+                    <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                        小队 <span class="text-gray-300 cursor-pointer bg-gray-100 rounded-full w-3 h-3 flex items-center justify-center text-[8px]" onclick="alert('【我的小队】是一个基地图标。你可以把它拖到中间，然后把同一类朋友（比如学校同学）放在它周围，假装他们在开会！')">?</span>
+                    </div>
+                    <div class="sidebar-item w-11 h-11 rounded-xl border-2 border-dashed border-indigo-300 bg-indigo-50 flex flex-col items-center justify-center shadow-sm cursor-pointer"
                          onclick="app.addNode('group', '🚩', '#e0e7ff')">
                          <span class="text-xl">🚩</span>
-                         <span class="text-[9px] text-indigo-500 font-bold">Base</span>
                     </div>
                 </div>
 
-                <div class="flex flex-col gap-3 w-full items-center">
-                    <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">朋友们</div>
-                    <button class="sidebar-item w-11 h-11 rounded-full bg-red-100 border-2 border-red-200 flex items-center justify-center text-2xl shadow-sm hover:bg-red-200" 
+                <div class="flex flex-col gap-2 w-full items-center">
+                    <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">朋友</div>
+                    <button class="sidebar-item w-10 h-10 rounded-full bg-red-100 border-2 border-red-200 flex items-center justify-center text-xl shadow-sm hover:bg-red-200" 
                          onclick="app.addNode('person', '👦', '#FF6B6B')">👦</button>
-                    <button class="sidebar-item w-11 h-11 rounded-full bg-teal-100 border-2 border-teal-200 flex items-center justify-center text-2xl shadow-sm hover:bg-teal-200" 
+                    <button class="sidebar-item w-10 h-10 rounded-full bg-teal-100 border-2 border-teal-200 flex items-center justify-center text-xl shadow-sm hover:bg-teal-200" 
                          onclick="app.addNode('person', '👧', '#4ECDC4')">👧</button>
-                    <button class="sidebar-item w-11 h-11 rounded-full bg-gray-50 border-2 border-dashed border-gray-300 flex items-center justify-center text-xl text-gray-400 hover:text-blue-500 hover:border-blue-300" 
+                    <button class="sidebar-item w-10 h-10 rounded-full bg-gray-50 border-2 border-dashed border-gray-300 flex items-center justify-center text-lg text-gray-400 hover:text-blue-500 hover:border-blue-300" 
                          onclick="app.addNode('person', 'SELECT_ME', 'RANDOM')">➕</button>
                 </div>
 
-                <div class="flex flex-col gap-3 w-full items-center">
-                    <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">发生了啥</div>
-                    <button class="sidebar-item w-11 h-11 rounded-lg bg-yellow-50 border-2 border-yellow-200 flex items-center justify-center text-2xl shadow-sm hover:bg-yellow-100" 
-                         onclick="app.addNode('event', '⚽', '#ffffff')">⚽</button>
-                    <button class="sidebar-item w-11 h-11 rounded-lg bg-gray-50 border-2 border-dashed border-gray-300 flex items-center justify-center text-xl text-gray-400 hover:text-blue-500 hover:border-blue-300" 
+                <div class="flex flex-col gap-2 w-full items-center">
+                    <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">事件</div>
+                    <button class="sidebar-item w-10 h-10 rounded-lg bg-yellow-50 border-2 border-yellow-200 flex items-center justify-center text-xl shadow-sm hover:bg-yellow-100" 
+                         onclick="app.addNode('event', '🎹', '#ffffff')">🎹</button>
+                    <button class="sidebar-item w-10 h-10 rounded-lg bg-gray-50 border-2 border-dashed border-gray-300 flex items-center justify-center text-lg text-gray-400 hover:text-blue-500 hover:border-blue-300" 
                          onclick="app.addNode('event', 'SELECT_ME', '#ffffff')">➕</button>
                 </div>
             </aside>
@@ -148,29 +154,31 @@
                 <div id="mode-toast" class="absolute top-6 left-1/2 transform -translate-x-1/2 bg-gray-800/90 text-white px-5 py-2 rounded-full text-sm shadow-xl opacity-0 transition-opacity pointer-events-none z-20 w-max backdrop-blur-sm flex items-center gap-2">
                     <span id="toast-icon">🔗</span> <span id="toast-msg">模式已切换</span>
                 </div>
-
-                <!-- 底部简易提示 (移动端) -->
-                <div class="absolute bottom-4 left-0 right-0 text-center pointer-events-none md:hidden opacity-50">
-                    <p class="text-xs text-gray-400 bg-white/80 inline-block px-3 py-1 rounded-full backdrop-blur">
-                        💡 点侧边栏添加 • 双击修改
-                    </p>
-                </div>
             </main>
         </div>
 
         <!-- 视图2: 日记本模式 -->
         <div id="view-diary" class="w-full h-full absolute inset-0 z-10 hidden flex flex-col bg-[#FDFBF7]">
-            <div class="p-4 sm:p-8 max-w-4xl mx-auto w-full h-full overflow-y-auto custom-scroll">
+            <div class="p-4 sm:p-8 max-w-4xl mx-auto w-full h-full overflow-y-auto custom-scroll pb-24">
                 <div class="flex items-end gap-3 mb-8 border-b border-gray-200 pb-4">
                     <h2 class="text-3xl text-gray-800">📖 回忆录</h2>
                     <span class="text-sm text-white bg-orange-400 px-3 py-1 rounded-full font-bold shadow-sm" id="diary-count">0篇</span>
                 </div>
-                <div id="diary-list" class="space-y-6 pb-20">
+                <div id="diary-list" class="space-y-6">
                     <!-- 日记卡片将在这里生成 -->
                 </div>
             </div>
         </div>
 
+        <!-- 移动端底部导航 (解决遮挡问题) -->
+        <div class="md:hidden fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white rounded-full shadow-xl border border-gray-100 p-1 flex gap-1 z-40 ring-4 ring-black/5">
+             <button id="nav-board-mobile" onclick="app.toggleView('board')" class="mobile-nav-btn active flex items-center gap-2 px-5 py-2 rounded-full text-sm font-bold text-gray-500 transition-all">
+                <span>🎨</span> 画板
+            </button>
+            <button id="nav-diary-mobile" onclick="app.toggleView('diary')" class="mobile-nav-btn flex items-center gap-2 px-5 py-2 rounded-full text-sm font-bold text-gray-500 transition-all">
+                <span>📖</span> 日记
+            </button>
+        </div>
     </div>
 
     <!-- 模态框 (通用) -->
@@ -185,8 +193,27 @@
                 <label class="block text-xs text-blue-500 mb-1 font-bold uppercase">📅 选择日期</label>
                 <input type="date" id="date-input" class="w-full p-2 border border-gray-300 rounded-lg bg-white font-bold text-gray-700 focus:outline-none focus:border-blue-400">
             </div>
+            
+            <!-- 仅用于设置页面的内容 -->
+            <div id="modal-settings-content" class="hidden mb-4 space-y-3">
+                <p class="text-xs text-gray-400 mb-2">数据只保存在这台设备上。如果你要换手机，请先【备份数据】，然后在另一台手机上【恢复数据】。</p>
+                <button onclick="app.exportData()" class="w-full py-3 bg-green-50 text-green-600 rounded-xl font-bold border border-green-200 hover:bg-green-100 text-left px-4 flex justify-between items-center">
+                    <span>📤 备份数据 (下载文件)</span>
+                    <span class="text-xl">⬇️</span>
+                </button>
+                <div class="relative">
+                    <button class="w-full py-3 bg-blue-50 text-blue-600 rounded-xl font-bold border border-blue-200 hover:bg-blue-100 text-left px-4 flex justify-between items-center">
+                        <span>📥 恢复数据 (选文件)</span>
+                        <span class="text-xl">⬆️</span>
+                    </button>
+                    <input type="file" id="import-file" onchange="app.importData(this)" class="absolute inset-0 opacity-0 cursor-pointer">
+                </div>
+                <div class="text-center mt-2">
+                    <button onclick="app.showSettings(true)" class="text-xs text-gray-400 underline">关于【我的小队】</button>
+                </div>
+            </div>
 
-            <div class="flex justify-end gap-3 mt-4">
+            <div class="flex justify-end gap-3 mt-4" id="modal-buttons">
                 <button onclick="app.closeModal()" class="px-5 py-2 text-gray-500 hover:bg-gray-100 rounded-lg font-bold text-sm transition-colors">取消</button>
                 <button id="modal-action" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-bold shadow-lg shadow-blue-200 transform active:scale-95 transition-all text-sm">确定</button>
             </div>
@@ -210,39 +237,36 @@
             const ctx = canvas.getContext('2d');
             const container = document.getElementById('canvas-container');
             
-            // --- 配置 ---
             const STORAGE_KEY_DRAFT = 'kids_diary_draft_v4'; 
             const STORAGE_KEY_HISTORY = 'kids_diary_history_v1';
             const ME_ID = 'USER_ME';
             
-            // 解决 Retina 屏幕模糊问题
             let dpr = window.devicePixelRatio || 1;
 
             const EMOJI_LIB = {
                 person: ["👶","👧","🧒","👦","👩","🧑","👨","👵","🧓","👴","👮","👩‍⚕️","🧑‍🏫","👨‍🍳","🦸","🧙","🧚","👻","🤖","👸","🐶","🐱"],
-                event: ["⚽","🏀","🎨","🎬","🎮","📚","🏫","🥪","🎂","🎁","📱","🚌","💊","🧹","🛒","🏖️","🏥","🎢","🧸"],
+                // 新增了乐器相关的图标
+                event: ["🎹","🎸","🎻","🎺","🥁","🎤","🎼","🎧","⚽","🏀","🎨","🎬","🎮","📚","🏫","🥪","🎂","🎁","📱","🚌","🏖️","🏥","🧸"],
                 fruit: ["🍊","🍎","🍐","🍋","🍌","🍉","🍇","🍓","🫐","🍈","🍒","🍑","🥭","🍍","🥥","🥝"],
                 group: ["🚩","🏠","🏕️","🚤","🚀","🏰","🏟️","🏫","🌳"]
             };
 
             let nodes = [];
             let links = [];
-            let width, height; // CSS 像素尺寸
+            let width, height;
             let mode = 'move';
             
-            // 交互状态
             const state = {
                 draggingNode: null,
                 connectingNode: null,
-                hoverNode: null, // 鼠标悬停的节点
-                hoverLink: null, // 鼠标悬停的连线 (新功能)
+                hoverNode: null,
+                hoverLink: null,
                 dragOffset: { x: 0, y: 0 },
                 mouseX: 0, mouseY: 0,
                 lastTouchTime: 0,
                 longPressTimer: null
             };
 
-            // 颜色池
             const COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEEAD', '#FF9F43', '#A3CB38', '#f368e0'];
 
             function init() {
@@ -266,7 +290,7 @@
                         emoji: '🕵️',
                         color: '#FFD93D',
                         label: '我',
-                        scale: 1 // 动画缩放因子
+                        scale: 1
                     });
                 }
             }
@@ -281,16 +305,11 @@
             function resize() {
                 width = container.clientWidth;
                 height = container.clientHeight;
-                
-                // 关键修复：处理 High DPI
                 canvas.width = width * dpr;
                 canvas.height = height * dpr;
                 canvas.style.width = width + 'px';
                 canvas.style.height = height + 'px';
-                
                 ctx.scale(dpr, dpr);
-
-                // 简单的边界检查，防止 Resize 后节点消失
                 nodes.forEach(n => {
                     n.x = Math.min(Math.max(n.x, 30), width - 30);
                     n.y = Math.min(Math.max(n.y, 30), height - 30);
@@ -301,21 +320,38 @@
                 const board = document.getElementById('view-board');
                 const diary = document.getElementById('view-diary');
                 const tools = document.getElementById('board-tools');
-                const btnBoard = document.getElementById('nav-board');
-                const btnDiary = document.getElementById('nav-diary');
+                
+                // 桌面端按钮
+                const btnBoardDesk = document.getElementById('nav-board-desktop');
+                const btnDiaryDesk = document.getElementById('nav-diary-desktop');
+                // 移动端按钮
+                const btnBoardMob = document.getElementById('nav-board-mobile');
+                const btnDiaryMob = document.getElementById('nav-diary-mobile');
+
+                const activeDesk = "flex items-center gap-1 px-4 py-2 rounded-lg text-sm transition-all shadow-sm bg-white text-blue-600 ring-1 ring-black/5 font-bold";
+                const inactiveDesk = "flex items-center gap-1 px-4 py-2 rounded-lg text-sm transition-all text-gray-500 hover:bg-gray-200/50";
 
                 if (viewName === 'board') {
                     board.classList.remove('hidden');
                     diary.classList.add('hidden');
-                    tools.classList.remove('hidden');
-                    btnBoard.className = "flex items-center gap-1 px-4 py-2 rounded-lg text-sm transition-all shadow-sm bg-white text-blue-600 ring-1 ring-black/5 font-bold";
-                    btnDiary.className = "flex items-center gap-1 px-4 py-2 rounded-lg text-sm transition-all text-gray-500 hover:bg-gray-200/50";
+                    // 在移动端，工具栏始终显示，Nav在底部
+                    if(window.innerWidth >= 768) tools.classList.remove('hidden');
+                    
+                    btnBoardDesk.className = activeDesk;
+                    btnDiaryDesk.className = inactiveDesk;
+                    
+                    btnBoardMob.classList.add('active');
+                    btnDiaryMob.classList.remove('active');
                 } else {
                     board.classList.add('hidden');
                     diary.classList.remove('hidden');
-                    tools.classList.add('hidden');
-                    btnDiary.className = "flex items-center gap-1 px-4 py-2 rounded-lg text-sm transition-all shadow-sm bg-white text-blue-600 ring-1 ring-black/5 font-bold";
-                    btnBoard.className = "flex items-center gap-1 px-4 py-2 rounded-lg text-sm transition-all text-gray-500 hover:bg-gray-200/50";
+                    if(window.innerWidth >= 768) tools.classList.add('hidden');
+
+                    btnDiaryDesk.className = activeDesk;
+                    btnBoardDesk.className = inactiveDesk;
+
+                    btnDiaryMob.classList.add('active');
+                    btnBoardMob.classList.remove('active');
                     renderDiaryList(); 
                 }
             }
@@ -328,17 +364,17 @@
                 const toastMsg = document.getElementById('toast-msg');
                 const toastIcon = document.getElementById('toast-icon');
                 
-                const activeClass = "bg-white shadow text-blue-600 ring-1 ring-blue-100 transform scale-105";
-                const inactiveClass = "text-gray-400 hover:text-blue-500";
+                const activeClass = "w-9 h-9 flex items-center justify-center rounded-md bg-white shadow text-blue-600 ring-1 ring-blue-100 transform scale-105 transition-all text-xl";
+                const inactiveClass = "w-9 h-9 flex items-center justify-center rounded-md text-gray-400 hover:text-blue-500 transition-all text-xl";
 
                 if (mode === 'move') {
-                    btnMove.className = `w-8 h-8 flex items-center justify-center rounded-md transition-all text-lg ${activeClass}`;
-                    btnLink.className = `w-8 h-8 flex items-center justify-center rounded-md transition-all text-lg ${inactiveClass}`;
+                    btnMove.className = activeClass;
+                    btnLink.className = inactiveClass;
                     container.classList.remove('mode-link');
                     toastMsg.innerText = "移动模式"; toastIcon.innerText = "✋";
                 } else {
-                    btnLink.className = `w-8 h-8 flex items-center justify-center rounded-md transition-all text-lg ${activeClass}`;
-                    btnMove.className = `w-8 h-8 flex items-center justify-center rounded-md transition-all text-lg ${inactiveClass}`;
+                    btnLink.className = activeClass;
+                    btnMove.className = inactiveClass;
                     container.classList.add('mode-link');
                     toastMsg.innerText = "连线模式"; toastIcon.innerText = "🔗";
                 }
@@ -347,21 +383,12 @@
                 setTimeout(() => toast.style.opacity = '0', 1500);
             }
 
-            // --- 绘图核心 ---
+            // --- 绘图 ---
             function animate() {
                 ctx.clearRect(0, 0, width, height);
-
-                // 绘制连线
                 links.forEach(link => drawLink(link));
-                
-                // 绘制正在拖拽的临时线
-                if (state.connectingNode) {
-                    drawCurve(state.connectingNode.x, state.connectingNode.y, state.mouseX, state.mouseY, '#4299e1', true);
-                }
-
-                // 绘制节点
+                if (state.connectingNode) drawCurve(state.connectingNode.x, state.connectingNode.y, state.mouseX, state.mouseY, '#4299e1', true);
                 nodes.forEach(node => drawNode(node));
-
                 requestAnimationFrame(animate);
             }
 
@@ -370,7 +397,6 @@
                 const isDragging = state.draggingNode === node;
                 const isMe = node.id === ME_ID;
                 
-                // 简单的弹性动画插值
                 const targetScale = isDragging || isHover ? 1.15 : 1.0;
                 node.scale = node.scale ? node.scale * 0.8 + targetScale * 0.2 : 1.0;
 
@@ -378,12 +404,10 @@
                 ctx.translate(node.x, node.y);
                 ctx.scale(node.scale, node.scale);
 
-                // 阴影
                 ctx.shadowColor = 'rgba(0,0,0,0.1)';
                 ctx.shadowBlur = isDragging ? 20 : 10;
                 ctx.shadowOffsetY = isDragging ? 10 : 5;
 
-                // 形状
                 ctx.beginPath();
                 if (node.type === 'group') {
                     ctx.roundRect(-45, -45, 90, 90, 16);
@@ -397,29 +421,21 @@
                 ctx.fillStyle = node.color;
                 ctx.fill();
                 
-                // 描边
                 ctx.lineWidth = 4;
                 ctx.strokeStyle = '#fff';
-                if (isMe) {
-                    ctx.strokeStyle = '#FFD93D'; // 金色边框
-                } else if (state.connectingNode && isHover && state.connectingNode !== node) {
-                    ctx.strokeStyle = '#4299e1'; // 连线吸附高亮
-                }
+                if (isMe) ctx.strokeStyle = '#FFD93D';
+                else if (state.connectingNode && isHover && state.connectingNode !== node) ctx.strokeStyle = '#4299e1';
                 ctx.stroke();
-                ctx.setLineDash([]); // 重置虚线
+                ctx.setLineDash([]);
 
-                // Emoji
                 ctx.shadowColor = 'transparent';
                 ctx.font = node.type === 'group' ? "48px Apple Color Emoji, Segoe UI Emoji" : "40px Apple Color Emoji, Segoe UI Emoji";
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
-                // 微调 Emoji 垂直位置
                 const yOffset = navigator.platform.indexOf('Win') > -1 ? 4 : 2; 
                 ctx.fillText(node.emoji, 0, yOffset);
 
-                // 标签
                 drawLabel(node.label, 0, node.type === 'group' ? 58 : 50, true, node.color);
-
                 ctx.restore();
             }
 
@@ -434,7 +450,6 @@
 
                 drawCurve(s.x, s.y, t.x, t.y, color, false, lineWidth);
 
-                // 标签 (绘制在曲线中点)
                 if (link.label) {
                     const mid = getCurveMidPoint(s.x, s.y, t.x, t.y);
                     ctx.save();
@@ -447,30 +462,21 @@
             function drawCurve(x1, y1, x2, y2, color, dashed = false, width = 3) {
                 ctx.beginPath();
                 ctx.moveTo(x1, y1);
-                
-                // 贝塞尔曲线控制点，使线条稍微弯曲
                 const dx = x2 - x1;
                 const dy = y2 - y1;
-                const dist = Math.sqrt(dx*dx + dy*dy);
-                // 动态曲率：距离越远弯曲越少，避免跑出屏幕
                 const factor = 0.2; 
-                const cpX = (x1 + x2) / 2 - dy * factor * 0.5; // 稍微偏移
+                const cpX = (x1 + x2) / 2 - dy * factor * 0.5;
                 const cpY = (y1 + y2) / 2 + dx * factor * 0.5;
-
                 ctx.quadraticCurveTo(cpX, cpY, x2, y2);
-                
                 ctx.lineCap = 'round';
                 ctx.lineWidth = width;
                 ctx.strokeStyle = color;
                 if (dashed) ctx.setLineDash([8, 8]);
                 else ctx.setLineDash([]);
                 ctx.stroke();
-                return { cpX, cpY };
             }
 
             function getCurveMidPoint(x1, y1, x2, y2) {
-                // 简化估算，直接取直线中点偏移一点，用于放文字足够了
-                // 如果需要精确贝塞尔中点公式太复杂，这里做个视觉欺骗
                 const dx = x2 - x1;
                 const dy = y2 - y1;
                 const factor = 0.2;
@@ -489,14 +495,11 @@
                 ctx.shadowColor = 'rgba(0,0,0,0.1)';
                 ctx.shadowBlur = 4;
                 ctx.shadowOffsetY = 2;
-                
                 ctx.fillStyle = bgOverride || "rgba(255, 255, 255, 0.95)";
                 ctx.beginPath();
                 const startY = isNode ? y : y - h/2;
                 ctx.roundRect(x - w/2, startY, w, h, 8);
                 ctx.fill();
-                
-                // 文字颜色
                 ctx.fillStyle = "#4b5563";
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
@@ -505,65 +508,46 @@
                 ctx.restore();
             }
 
-            // --- 事件处理 ---
             function getPointerPos(e) {
                 const rect = canvas.getBoundingClientRect();
                 const clientX = e.touches ? e.touches[0].clientX : e.clientX;
                 const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-                return { 
-                    x: (clientX - rect.left), // 这里的坐标是 CSS 像素
-                    y: (clientY - rect.top)
-                };
+                return { x: (clientX - rect.left), y: (clientY - rect.top) };
             }
 
-            // 关键优化：使用 isPointInStroke 进行更精确且易用的连线判定
             function checkHover(x, y) {
-                // 为了检测，需要重绘路径 (不可见)
-                // 1. 检查连线 (优先度低)
                 state.hoverLink = null;
-                // 逆序遍历，让上层的线优先
                 for (let i = links.length - 1; i >= 0; i--) {
                     const l = links[i];
                     const s = nodes.find(n => n.id === l.source);
                     const t = nodes.find(n => n.id === l.target);
                     if (!s || !t) continue;
-
-                    // 重新构建路径
-                    drawCurve(s.x, s.y, t.x, t.y, 'transparent', false, 15); // 15px 宽度的检测区域
-                    if (ctx.isPointInStroke(x * dpr, y * dpr)) { // 注意：isPointInStroke 使用 Canvas 内部分辨率
+                    drawCurve(s.x, s.y, t.x, t.y, 'transparent', false, 15);
+                    if (ctx.isPointInStroke(x * dpr, y * dpr)) {
                         state.hoverLink = l;
                         break; 
                     }
                 }
-
-                // 2. 检查节点 (优先度高，覆盖连线)
                 state.hoverNode = null;
                 for (let i = nodes.length - 1; i >= 0; i--) {
                     const n = nodes[i];
-                    const r = n.type === 'group' ? 50 : 40; // 点击区域略大于绘制区域
+                    const r = n.type === 'group' ? 50 : 40;
                     if (Math.abs(x - n.x) < r && Math.abs(y - n.y) < r) {
                         state.hoverNode = n;
-                        state.hoverLink = null; // 选中节点时清除连线选中
+                        state.hoverLink = null;
                         break;
                     }
                 }
-
                 container.style.cursor = state.hoverNode ? 'grab' : (state.hoverLink ? 'pointer' : (mode==='link' ? 'crosshair' : 'default'));
             }
 
             function handleStart(e) {
-                // e.preventDefault(); // 不能全阻止，否则输入框无法失焦，但此处 Canvas 需要阻止滚动
                 if(e.target === canvas) e.preventDefault(); 
-                
                 const { x, y } = getPointerPos(e);
                 checkHover(x, y);
 
-                // 双击检测
                 const now = Date.now();
-                if (now - state.lastTouchTime < 300) {
-                    handleDoubleClick(e);
-                    return;
-                }
+                if (now - state.lastTouchTime < 300) { handleDoubleClick(e); return; }
                 state.lastTouchTime = now;
 
                 if (state.hoverNode) {
@@ -573,10 +557,7 @@
                         state.draggingNode = state.hoverNode;
                         state.dragOffset = { x: x - state.hoverNode.x, y: y - state.hoverNode.y };
                     }
-                } else {
-                    // 长按逻辑 (例如：清空选中)
                 }
-                
                 state.mouseX = x; state.mouseY = y;
             }
 
@@ -586,12 +567,9 @@
                 state.mouseX = x; state.mouseY = y;
                 
                 if (state.draggingNode) {
-                    // 边界限制：不让节点跑出去
                     const margin = 30;
                     state.draggingNode.x = Math.max(margin, Math.min(width - margin, x - state.dragOffset.x));
                     state.draggingNode.y = Math.max(margin, Math.min(height - margin, y - state.dragOffset.y));
-                } else if (state.connectingNode) {
-                    // 仅更新 state.mouseX/Y 用于绘制连线动画
                 } else {
                     checkHover(x, y);
                 }
@@ -599,29 +577,20 @@
 
             function handleEnd(e) {
                 if (state.connectingNode) {
-                    // 结束连线
-                    checkHover(state.mouseX, state.mouseY); // 重新检测释放位置下的节点
+                    checkHover(state.mouseX, state.mouseY);
                     const target = state.hoverNode;
-                    
                     if (target && target !== state.connectingNode) {
                         const exists = links.find(l => 
                             (l.source === state.connectingNode.id && l.target === target.id) || 
                             (l.source === target.id && l.target === state.connectingNode.id)
                         );
-                        
                         if (!exists) {
-                            links.push({ 
-                                id: Date.now().toString(), 
-                                source: state.connectingNode.id, 
-                                target: target.id, 
-                                label: "互动" 
-                            });
+                            links.push({ id: Date.now().toString(), source: state.connectingNode.id, target: target.id, label: "互动" });
                             saveDraft();
                         }
                     }
                     state.connectingNode = null;
                 }
-                
                 if (state.draggingNode) {
                     state.draggingNode = null;
                     saveDraft();
@@ -637,9 +606,7 @@
                         showDialog({
                             title: "✏️ 它是谁？",
                             inputValue: n.label,
-                            onConfirm: (val) => { 
-                                if(val) { n.label = val; saveDraft(); return true; } 
-                            }
+                            onConfirm: (val) => { if(val) { n.label = val; saveDraft(); return true; } }
                         });
                     }
                 } else if (state.hoverLink) {
@@ -647,19 +614,15 @@
                     showDialog({
                         title: "✏️ 发生了什么？",
                         inputValue: l.label,
-                        onConfirm: (val) => { 
-                            if(val) { l.label = val; saveDraft(); return true; }
-                        }
+                        onConfirm: (val) => { if(val) { l.label = val; saveDraft(); return true; } }
                     });
                 }
             }
             
-            // 右键菜单
             function handleContextMenu(e) {
                 e.preventDefault();
                 const { x, y } = getPointerPos(e);
                 checkHover(x, y);
-
                 if (state.hoverNode) {
                     if (state.hoverNode.id === ME_ID) return;
                     showDialog({
@@ -690,21 +653,16 @@
             }
 
             function setupEvents() {
-                // 指针事件 (Pointer Events) 统一处理鼠标和触摸
-                // 但为了兼容性，仍使用 mouse/touch 分离，或添加 touch-action css
                 canvas.addEventListener('mousedown', handleStart);
                 canvas.addEventListener('mousemove', handleMove);
                 canvas.addEventListener('mouseup', handleEnd);
                 canvas.addEventListener('mouseleave', () => { state.draggingNode = null; state.connectingNode = null; });
-                
                 canvas.addEventListener('touchstart', handleStart, {passive: false});
                 canvas.addEventListener('touchmove', handleMove, {passive: false});
                 canvas.addEventListener('touchend', handleEnd);
-                
                 canvas.addEventListener('contextmenu', handleContextMenu);
             }
 
-            // --- 节点操作 (优化为点击添加，而非拖拽) ---
             function addNode(type, emoji, color) {
                 if (emoji === 'SELECT_ME') {
                     showEmojiPicker(type, (selectedEmoji) => {
@@ -713,41 +671,37 @@
                 } else {
                     createNode(type, emoji, color);
                 }
-                
-                // 移动端体验：自动关闭侧边栏（如果以后做成抽屉式）
-                // 震动反馈
                 if (navigator.vibrate) navigator.vibrate(50);
             }
 
             function getRandomColor() { return COLORS[Math.floor(Math.random() * COLORS.length)]; }
 
             function createNode(type, emoji, color) {
-                // 放置在画布中心，带一点随机偏移
                 const x = width / 2 + (Math.random() * 60 - 30);
                 const y = height / 2 + (Math.random() * 60 - 30);
-                
                 const id = Date.now().toString(36) + Math.random().toString(36).slice(2);
                 let label = "新事物";
                 if (type === 'person') label = "新朋友";
                 if (type === 'group') label = "基地";
-                
-                nodes.push({ id, x, y, type, emoji, color, label, scale: 0 }); // scale 0 for pop-in animation
+                nodes.push({ id, x, y, type, emoji, color, label, scale: 0 });
                 saveDraft();
             }
 
-            // --- 模态框逻辑 (修复 Bug) ---
-            let currentConfirmCallback = null;
-
+            // --- 模态框与设置 ---
             function showDialog({ title, desc, inputValue, onConfirm, isConfirm }) {
                 const overlay = document.getElementById('modal-overlay');
                 const titleEl = document.getElementById('modal-title');
                 const descEl = document.getElementById('modal-desc');
                 const inputEl = document.getElementById('modal-input');
                 const dateEl = document.getElementById('modal-date-picker');
+                const settingsEl = document.getElementById('modal-settings-content');
+                const btnContainer = document.getElementById('modal-buttons');
                 const btn = document.getElementById('modal-action');
                 
                 overlay.classList.remove('hidden');
                 titleEl.innerText = title;
+                settingsEl.classList.add('hidden');
+                btnContainer.classList.remove('hidden');
                 
                 if (isConfirm) {
                     inputEl.classList.add('hidden');
@@ -755,7 +709,6 @@
                     descEl.classList.remove('hidden');
                     descEl.innerText = desc;
                 } else {
-                    // 普通输入模式
                     descEl.classList.add('hidden');
                     dateEl.classList.add('hidden');
                     inputEl.classList.remove('hidden');
@@ -763,14 +716,11 @@
                     setTimeout(() => inputEl.focus(), 100);
                 }
 
-                // 移除旧的监听器 (防止多次绑定)
                 const newBtn = btn.cloneNode(true);
                 btn.parentNode.replaceChild(newBtn, btn);
-                
                 newBtn.onclick = () => {
                     if (onConfirm) {
                         const result = onConfirm(inputEl.value);
-                        // 只有回调返回 true (或不返回 false) 时才关闭
                         if (result !== false) closeModal();
                     } else {
                         closeModal();
@@ -778,15 +728,82 @@
                 };
             }
 
+            // 新增：显示设置/备份面板
+            function showSettings(showHelp = false) {
+                const overlay = document.getElementById('modal-overlay');
+                const titleEl = document.getElementById('modal-title');
+                const descEl = document.getElementById('modal-desc');
+                const inputEl = document.getElementById('modal-input');
+                const dateEl = document.getElementById('modal-date-picker');
+                const settingsEl = document.getElementById('modal-settings-content');
+                const btnContainer = document.getElementById('modal-buttons');
+
+                overlay.classList.remove('hidden');
+                inputEl.classList.add('hidden');
+                dateEl.classList.add('hidden');
+                
+                if(showHelp) {
+                     titleEl.innerText = "🏳️ 关于【我的小队】";
+                     descEl.classList.remove('hidden');
+                     descEl.innerHTML = "这是一个用来<b>分组</b>的功能。<br><br>1. 把旗帜🚩拖到中间。<br>2. 给它起个名字，比如“学校”。<br>3. 把同学们的头像拖到它旁边。<br><br>这样你就知道哪些朋友是哪一伙的啦！";
+                     settingsEl.classList.add('hidden');
+                     btnContainer.classList.remove('hidden');
+                     const btn = document.getElementById('modal-action');
+                     const newBtn = btn.cloneNode(true);
+                     btn.parentNode.replaceChild(newBtn, btn);
+                     newBtn.onclick = closeModal;
+                } else {
+                    titleEl.innerText = "⚙️ 设置与备份";
+                    descEl.classList.add('hidden');
+                    settingsEl.classList.remove('hidden');
+                    btnContainer.classList.remove('hidden');
+                    // 只有取消按钮有效，确定按钮在设置页意义不大，或者作为关闭
+                    const btn = document.getElementById('modal-action');
+                    const newBtn = btn.cloneNode(true);
+                    btn.parentNode.replaceChild(newBtn, btn);
+                    newBtn.onclick = closeModal;
+                }
+            }
+
             function closeModal() {
                 document.getElementById('modal-overlay').classList.add('hidden');
             }
 
-            // --- 日记功能 ---
-            let diaryHistory = [];
+            // --- 数据导出/导入 ---
+            function exportData() {
+                const data = {
+                    draft: JSON.parse(localStorage.getItem(STORAGE_KEY_DRAFT) || '{}'),
+                    history: JSON.parse(localStorage.getItem(STORAGE_KEY_HISTORY) || '[]')
+                };
+                const blob = new Blob([JSON.stringify(data)], {type: 'application/json'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `侦探日记备份_${new Date().toLocaleDateString().replace(/\//g,'-')}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
 
+            function importData(input) {
+                const file = input.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        if (data.draft) localStorage.setItem(STORAGE_KEY_DRAFT, JSON.stringify(data.draft));
+                        if (data.history) localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(data.history));
+                        alert("数据恢复成功！即将刷新页面...");
+                        location.reload();
+                    } catch (err) {
+                        alert("文件好像坏掉了，无法读取 😢");
+                    }
+                };
+                reader.readAsText(file);
+            }
+
+            // --- 日记功能 ---
             function saveToDiary() {
-                // 特殊模态框逻辑
                 const overlay = document.getElementById('modal-overlay');
                 const titleEl = document.getElementById('modal-title');
                 const descEl = document.getElementById('modal-desc');
@@ -794,15 +811,16 @@
                 const datePicker = document.getElementById('modal-date-picker');
                 const dateInput = document.getElementById('date-input');
                 const btn = document.getElementById('modal-action');
+                const settingsEl = document.getElementById('modal-settings-content');
 
                 overlay.classList.remove('hidden');
                 titleEl.innerText = "💾 保存回忆";
                 inputEl.classList.add('hidden');
+                settingsEl.classList.add('hidden');
                 descEl.classList.remove('hidden');
                 descEl.innerText = "我们要把今天的侦探画板存起来吗？";
                 datePicker.classList.remove('hidden');
                 
-                // 替换按钮防止重复绑定
                 const newBtn = btn.cloneNode(true);
                 btn.parentNode.replaceChild(newBtn, btn);
 
@@ -817,21 +835,15 @@
 
                     const existingIdx = diaryHistory.findIndex(d => d.date === date);
                     if (existingIdx >= 0) {
-                        // 合并逻辑：简单的覆盖或追加？这里选择覆盖当前日记的快照，但通常应该更智能
-                        // 简化处理：更新该日内容
                         diaryHistory[existingIdx] = { ...snapshot, date, timestamp: Date.now() };
                     } else {
                         diaryHistory.unshift({ ...snapshot, date, timestamp: Date.now() });
                     }
                     
-                    // 排序
                     diaryHistory.sort((a,b) => new Date(b.date) - new Date(a.date));
                     localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(diaryHistory));
-                    
                     closeModal();
-                    
-                    // 飞入日记本的动画反馈 (可选)
-                    app.toggleView('diary');
+                    toggleView('diary');
                 };
             }
 
@@ -849,9 +861,6 @@
                 diaryHistory.forEach((item, idx) => {
                     const div = document.createElement('div');
                     div.className = "diary-card p-5 rounded-2xl shadow-sm border border-gray-100 relative";
-                    
-                    // 分析内容
-                    const meNode = item.nodes.find(n => n.id === ME_ID);
                     const actionCount = item.links.length;
                     const peopleCount = item.nodes.filter(n => n.type === 'person' && n.id !== ME_ID).length;
                     
@@ -918,7 +927,6 @@
                 });
             }
 
-            // --- 通用 ---
             function showEmojiPicker(type, callback) {
                 const el = document.getElementById('emoji-overlay');
                 const grid = document.getElementById('emoji-grid');
@@ -962,7 +970,8 @@
 
             return {
                 init, toggleView, setMode, addNode,
-                saveToDiary, loadDiary, deleteDiary, clearBoard, closeModal
+                saveToDiary, loadDiary, deleteDiary, clearBoard, closeModal,
+                showSettings, exportData, importData
             };
         })();
 
