@@ -2,168 +2,205 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>我的社交侦探日记 (修复版)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>我的社交侦探日记 (优化版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap');
+
         body {
-            font-family: "YouYuan", "幼圆", "Comic Sans MS", "Chalkboard SE", sans-serif;
+            font-family: "ZCOOL KuaiLe", "YouYuan", "幼圆", sans-serif; /* 使用更卡通的字体 */
             background-color: #f0f4f8;
             overflow: hidden;
             user-select: none;
+            -webkit-user-select: none;
             overscroll-behavior: none;
+            touch-action: none; /* 全局禁止默认触摸行为 */
+        }
+
+        /* 允许输入框选中 */
+        input, textarea {
+            user-select: text !important;
+            -webkit-user-select: text !important;
+            touch-action: auto !important; /* 恢复输入框的触摸操作 */
         }
 
         #canvas-container {
             background-color: #F9F7F2;
             background-image: 
-                linear-gradient(#E1E1E1 1px, transparent 1px),
-                linear-gradient(90deg, #E1E1E1 1px, transparent 1px);
+                radial-gradient(#CBD5E0 1px, transparent 1px);
             background-size: 20px 20px;
             cursor: default;
             touch-action: none; 
             -webkit-tap-highlight-color: transparent;
         }
-        
-        #canvas-container.mode-link {
-            cursor: crosshair;
-        }
+        #canvas-container.mode-link { cursor: crosshair; }
 
-        。sidebar-item {
-            transition: transform 0.2s;
-            cursor: grab;
+        .sidebar-item {
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             touch-action: none;
+            position: relative;
         }
-        .sidebar-item:active {
-            cursor: grabbing;
-            transform: scale(1.2);
-        }
+        .sidebar-item:active { transform: scale(0.9); }
+        .sidebar-item:hover { transform: scale(1.05); }
 
-        .emoji-btn {
-            cursor: pointer;
-            transition: transform 0.1s, background 0.1s;
-        }
-        .emoji-btn:hover, .emoji-btn:active {
-            transform: scale(1.2);
-            background-color: #edf2f7;
-            border-radius: 8px;
-        }
-
-        .hidden {
-            display: none !important;
-        }
+        /* 增加点击反馈 */
+        .btn-press:active { transform: scale(0.95); }
 
         .custom-scroll::-webkit-scrollbar { width: 6px; }
-        .custom-scroll::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 3px; }
+
+        .diary-card {
+            border-left: 6px solid #FFD93D;
+            transition: transform 0.2s;
+            background: linear-gradient(to right, #fff 98%, #fffbf0 100%);
+        }
+        .diary-card:hover { transform: translateY(-2px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        
+        /* 模态框动画 */
+        .modal-enter { animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes modalPop {
+            0% { opacity: 0; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1); }
+        }
     </style>
 </head>
-<body class="h-screen flex flex-col text-gray-700">
+<body class="h-screen flex flex-col text-gray-700 font-medium">
 
     <!-- 顶部导航栏 -->
-    <header class="bg-white shadow-sm z-10 px-4 py-2 flex justify-between items-center border-b-4 border-yellow-300 border-dashed h-16 shrink-0">
-        <div class="flex items-center gap-2">
-            <div class="text-2xl animate-bounce">🍊</div>
-            <div class="hidden sm:block">
-                <h1 class="text-lg font-bold text-gray-800">社交日记</h1>
-                <p class="text-xs text-gray-500" id="date-display">Loading...</p>
+    <header class="bg-white shadow-sm z-20 px-4 py-2 flex justify-between items-center border-b-4 border-yellow-300 border-dashed h-16 shrink-0 relative">
+        <div class="flex items-center gap-3 select-none" onclick="app.toggleView('board')">
+            <div class="text-3xl filter drop-shadow-sm cursor-pointer hover:scale-110 transition">🕵️</div>
+            <div class="hidden sm:block cursor-pointer">
+                <h1 class="text-xl text-gray-800 tracking-wide">侦探日记</h1>
+                <p class="text-xs text-gray-400 font-sans" id="date-display">Loading...</p>
             </div>
         </div>
 
-        <div class="flex bg-gray-100 p-1 rounded-lg mx-2">
-            <button id="btn-move" onclick="app.setMode('move')" class="px-3 py-1 rounded-md text-sm font-bold bg-white shadow text-blue-600 transition flex items-center gap-1">
-                <span>✋</span> <span class="hidden sm:inline">移动</span>
+        <!-- 中间切换器 -->
+        <div class="flex bg-gray-100 p-1 rounded-xl absolute left-1/2 transform -translate-x-1/2 shadow-inner">
+            <button id="nav-board" onclick="app.toggleView('board')" class="flex items-center gap-1 px-4 py-2 rounded-lg text-sm transition-all shadow-sm bg-white text-blue-600 ring-1 ring-black/5">
+                <span>🎨</span> 画板
             </button>
-            <button id="btn-link" onclick="app.setMode('link')" class="px-3 py-1 rounded-md text-sm font-bold text-gray-500 hover:bg-gray-200 transition flex items-center gap-1">
-                <span>🔗</span> <span class="hidden sm:inline">连线</span>
+            <button id="nav-diary" onclick="app.toggleView('diary')" class="flex items-center gap-1 px-4 py-2 rounded-lg text-sm transition-all text-gray-500 hover:bg-gray-200/50">
+                <span>📖</span> 日记
             </button>
         </div>
         
-        <div class="flex gap-1 sm:gap-2">
-            <!-- 修改了图标按钮的 title 以方便鼠标悬停查看功能 -->
-            <button onclick="app.clearBoard()" title="清空画板" class="px-3 py-1 bg-red-100 text-red-600 rounded-full hover:bg-red-200 text-xs font-bold">🗑️</button>
-            <button onclick="app.showImport()" title="读取日记" class="px-3 py-1 bg-purple-100 text-purple-600 rounded-full hover:bg-purple-200 text-xs font-bold">📥</button>
-            <button onclick="app.exportData()" title="保存日记" class="px-3 py-1 bg-green-100 text-green-600 rounded-full hover:bg-green-200 text-xs font-bold">📤</button>
+        <!-- 右侧工具栏 -->
+        <div id="board-tools" class="flex gap-2 items-center">
+            <!-- 模式切换：仅在画板显示 -->
+            <div class="flex bg-gray-100 p-1 rounded-lg">
+                <button id="btn-move" onclick="app.setMode('move')" title="移动模式" class="w-8 h-8 flex items-center justify-center rounded-md bg-white shadow text-blue-600 transition-all text-lg">✋</button>
+                <button id="btn-link" onclick="app.setMode('link')" title="连线模式" class="w-8 h-8 flex items-center justify-center rounded-md text-gray-400 hover:text-blue-500 transition-all text-lg">🔗</button>
+            </div>
+
+            <div class="w-px h-6 bg-gray-300 mx-1"></div>
+
+            <button onclick="app.clearBoard()" title="清空" class="btn-press w-9 h-9 bg-red-50 text-red-500 rounded-full hover:bg-red-100 flex items-center justify-center text-lg border border-red-100">🗑️</button>
+            <button onclick="app.saveToDiary()" title="保存" class="btn-press px-3 py-1.5 bg-green-400 text-white rounded-full hover:bg-green-500 shadow-lg shadow-green-200 text-sm flex items-center gap-1 border-b-2 border-green-600 active:border-b-0 active:translate-y-[2px]">
+                <span>💾</span> 存日记
+            </button>
         </div>
     </header>
 
-    <div class="flex flex-1 overflow-hidden">
-        <!-- 左侧工具箱 -->
-        <aside class="w-16 sm:w-20 bg-white shadow-md flex flex-col items-center py-4 overflow-y-auto z-10 border-r border-gray-200 custom-scroll shrink-0">
-            
-            <div class="text-xs font-bold text-gray-400 mb-2">人物</div>
-            <div class="flex flex-col gap-3 mb-6">
-                <div class="sidebar-item w-10 h-10 rounded-full bg-red-100 border-2 border-red-300 flex items-center justify-center text-xl" 
-                     draggable="true" ondragstart="app.handleDragStart(event, 'person', '👦', '#FF6B6B')"
-                     ontouchstart="app.handleTouchDragStart(event, 'person', '👦', '#FF6B6B')">👦</div>
-                <div class="sidebar-item w-10 h-10 rounded-full bg-blue-100 border-2 border-blue-300 flex items-center justify-center text-xl" 
-                     draggable="true" ondragstart="app.handleDragStart(event, 'person', '👧', '#4ECDC4')"
-                     ontouchstart="app.handleTouchDragStart(event, 'person', '👧', '#4ECDC4')">👧</div>
-                <div class="sidebar-item w-10 h-10 rounded-full bg-gray-100 border-2 border-dashed border-gray-400 flex items-center justify-center text-lg text-gray-500 font-bold" 
-                     draggable="true" ondragstart="app.handleDragStart(event, 'person', 'SELECT_ME', 'RANDOM')"
-                     ontouchstart="app.handleTouchDragStart(event, 'person', 'SELECT_ME', 'RANDOM')">➕</div>
-            </div>
+    <div class="flex flex-1 overflow-hidden relative">
+        
+        <!-- 视图1: 画板模式 -->
+        <div id="view-board" class="flex w-full h-full absolute inset-0 z-0">
+            <!-- 左侧工具箱 -->
+            <aside class="w-18 sm:w-20 bg-white shadow-xl flex flex-col items-center py-6 overflow-y-auto z-10 border-r border-gray-100 custom-scroll shrink-0 space-y-8 select-none">
+                
+                <div class="flex flex-col gap-3 w-full items-center">
+                    <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">我的小队</div>
+                    <div class="sidebar-item w-12 h-12 rounded-xl border-2 border-dashed border-indigo-300 bg-indigo-50 flex flex-col items-center justify-center shadow-sm cursor-pointer"
+                         onclick="app.addNode('group', '🚩', '#e0e7ff')">
+                         <span class="text-xl">🚩</span>
+                         <span class="text-[9px] text-indigo-500 font-bold">Base</span>
+                    </div>
+                </div>
 
-            <div class="text-xs font-bold text-gray-400 mb-2">事件</div>
-            <div class="flex flex-col gap-3 mb-6">
-                <div class="sidebar-item w-10 h-10 rounded bg-white border-2 border-gray-300 flex items-center justify-center text-xl" 
-                     draggable="true" ondragstart="app.handleDragStart(event, 'event', '⚽', '#ffffff')"
-                     ontouchstart="app.handleTouchDragStart(event, 'event', '⚽', '#ffffff')">⚽</div>
-                <div class="sidebar-item w-10 h-10 rounded bg-white border-2 border-gray-300 flex items-center justify-center text-xl" 
-                     draggable="true" ondragstart="app.handleDragStart(event, 'event', '📝', '#ffffff')"
-                     ontouchstart="app.handleTouchDragStart(event, 'event', '📝', '#ffffff')">📝</div>
-                <div class="sidebar-item w-10 h-10 rounded bg-gray-100 border-2 border-dashed border-gray-400 flex items-center justify-center text-lg text-gray-500 font-bold" 
-                     draggable="true" ondragstart="app.handleDragStart(event, 'event', 'SELECT_ME', '#ffffff')"
-                     ontouchstart="app.handleTouchDragStart(event, 'event', 'SELECT_ME', '#ffffff')">➕</div>
-            </div>
+                <div class="flex flex-col gap-3 w-full items-center">
+                    <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">朋友们</div>
+                    <button class="sidebar-item w-11 h-11 rounded-full bg-red-100 border-2 border-red-200 flex items-center justify-center text-2xl shadow-sm hover:bg-red-200" 
+                         onclick="app.addNode('person', '👦', '#FF6B6B')">👦</button>
+                    <button class="sidebar-item w-11 h-11 rounded-full bg-teal-100 border-2 border-teal-200 flex items-center justify-center text-2xl shadow-sm hover:bg-teal-200" 
+                         onclick="app.addNode('person', '👧', '#4ECDC4')">👧</button>
+                    <button class="sidebar-item w-11 h-11 rounded-full bg-gray-50 border-2 border-dashed border-gray-300 flex items-center justify-center text-xl text-gray-400 hover:text-blue-500 hover:border-blue-300" 
+                         onclick="app.addNode('person', 'SELECT_ME', 'RANDOM')">➕</button>
+                </div>
 
-            <div class="text-xs font-bold text-gray-400 mb-2">结果</div>
-            <div class="flex flex-col gap-3 pb-6">
-                <div class="sidebar-item w-10 h-8 rounded-full bg-green-100 border-2 border-green-400 flex items-center justify-center text-lg" 
-                     draggable="true" ondragstart="app.handleDragStart(event, 'result', '😄', '#6BCB77')"
-                     ontouchstart="app.handleTouchDragStart(event, 'result', '😄', '#6BCB77')">😄</div>
-                <div class="sidebar-item w-10 h-8 rounded-full bg-gray-200 border-2 border-gray-400 flex items-center justify-center text-lg" 
-                     draggable="true" ondragstart="app.handleDragStart(event, 'result', '😢', '#A6A9B6')"
-                     ontouchstart="app.handleTouchDragStart(event, 'result', '😢', '#A6A9B6')">😢</div>
-                 <div class="sidebar-item w-10 h-8 rounded-full bg-gray-100 border-2 border-dashed border-gray-400 flex items-center justify-center text-lg text-gray-500 font-bold" 
-                     draggable="true" ondragstart="app.handleDragStart(event, 'result', 'SELECT_ME', '#FFD93D')"
-                     ontouchstart="app.handleTouchDragStart(event, 'result', 'SELECT_ME', '#FFD93D')">➕</div>
-            </div>
-        </aside>
+                <div class="flex flex-col gap-3 w-full items-center">
+                    <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">发生了啥</div>
+                    <button class="sidebar-item w-11 h-11 rounded-lg bg-yellow-50 border-2 border-yellow-200 flex items-center justify-center text-2xl shadow-sm hover:bg-yellow-100" 
+                         onclick="app.addNode('event', '⚽', '#ffffff')">⚽</button>
+                    <button class="sidebar-item w-11 h-11 rounded-lg bg-gray-50 border-2 border-dashed border-gray-300 flex items-center justify-center text-xl text-gray-400 hover:text-blue-500 hover:border-blue-300" 
+                         onclick="app.addNode('event', 'SELECT_ME', '#ffffff')">➕</button>
+                </div>
+            </aside>
 
-        <!-- 主画布 -->
-        <main id="canvas-container" class="flex-1 relative overflow-hidden" 
-              ondrop="app.handleDrop(event)" 
-              ondragover="app.handleDragOver(event)">
-            <canvas id="boardCanvas" class="absolute top-0 left-0 block"></canvas>
-            
-            <div id="mode-toast" class="absolute top-4 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white px-4 py-1 rounded-full text-sm shadow-lg opacity-0 transition-opacity pointer-events-none z-20 w-max">
-                已切换到连线模式
+            <!-- 主画布 -->
+            <main id="canvas-container" class="flex-1 relative overflow-hidden">
+                <canvas id="boardCanvas" class="absolute top-0 left-0 block"></canvas>
+                
+                <!-- 提示 Toast -->
+                <div id="mode-toast" class="absolute top-6 left-1/2 transform -translate-x-1/2 bg-gray-800/90 text-white px-5 py-2 rounded-full text-sm shadow-xl opacity-0 transition-opacity pointer-events-none z-20 w-max backdrop-blur-sm flex items-center gap-2">
+                    <span id="toast-icon">🔗</span> <span id="toast-msg">模式已切换</span>
+                </div>
+
+                <!-- 底部简易提示 (移动端) -->
+                <div class="absolute bottom-4 left-0 right-0 text-center pointer-events-none md:hidden opacity-50">
+                    <p class="text-xs text-gray-400 bg-white/80 inline-block px-3 py-1 rounded-full backdrop-blur">
+                        💡 点侧边栏添加 • 双击修改
+                    </p>
+                </div>
+            </main>
+        </div>
+
+        <!-- 视图2: 日记本模式 -->
+        <div id="view-diary" class="w-full h-full absolute inset-0 z-10 hidden flex flex-col bg-[#FDFBF7]">
+            <div class="p-4 sm:p-8 max-w-4xl mx-auto w-full h-full overflow-y-auto custom-scroll">
+                <div class="flex items-end gap-3 mb-8 border-b border-gray-200 pb-4">
+                    <h2 class="text-3xl text-gray-800">📖 回忆录</h2>
+                    <span class="text-sm text-white bg-orange-400 px-3 py-1 rounded-full font-bold shadow-sm" id="diary-count">0篇</span>
+                </div>
+                <div id="diary-list" class="space-y-6 pb-20">
+                    <!-- 日记卡片将在这里生成 -->
+                </div>
             </div>
-        </main>
+        </div>
+
     </div>
 
-    <!-- 模态框 -->
-    <div id="modal-overlay" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center backdrop-blur-sm px-4">
-        <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl transform transition-all">
-            <h2 id="modal-title" class="text-xl font-bold mb-4 text-gray-800">标题</h2>
-            <p id="modal-desc" class="text-sm text-gray-600 mb-4 hidden">确认？</p>
-            <textarea id="modal-input" class="w-full h-32 p-3 border border-gray-300 rounded-lg bg-gray-50 text-base focus:ring-2 focus:ring-blue-400 focus:outline-none resize-none mb-2"></textarea>
-            <div class="flex justify-end gap-3 mt-2">
-                <button onclick="app.closeModal()" class="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded font-medium">取消</button>
-                <button id="modal-action" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 font-bold shadow-md transition">确定</button>
+    <!-- 模态框 (通用) -->
+    <div id="modal-overlay" class="fixed inset-0 bg-gray-900/40 hidden z-50 flex items-center justify-center backdrop-blur-[2px] px-4 transition-opacity">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl modal-enter border-4 border-white ring-4 ring-blue-50">
+            <h2 id="modal-title" class="text-xl text-gray-800 mb-2 flex items-center gap-2">标题</h2>
+            <p id="modal-desc" class="text-sm text-gray-500 mb-4 leading-relaxed hidden">确认？</p>
+            
+            <textarea id="modal-input" class="w-full h-24 p-4 border-2 border-gray-200 rounded-xl bg-gray-50 text-lg focus:ring-0 focus:border-blue-400 focus:bg-white focus:outline-none resize-none mb-2 transition-colors placeholder-gray-300"></textarea>
+            
+            <div id="modal-date-picker" class="hidden mb-6 bg-blue-50 p-3 rounded-xl border border-blue-100">
+                <label class="block text-xs text-blue-500 mb-1 font-bold uppercase">📅 选择日期</label>
+                <input type="date" id="date-input" class="w-full p-2 border border-gray-300 rounded-lg bg-white font-bold text-gray-700 focus:outline-none focus:border-blue-400">
+            </div>
+
+            <div class="flex justify-end gap-3 mt-4">
+                <button onclick="app.closeModal()" class="px-5 py-2 text-gray-500 hover:bg-gray-100 rounded-lg font-bold text-sm transition-colors">取消</button>
+                <button id="modal-action" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-bold shadow-lg shadow-blue-200 transform active:scale-95 transition-all text-sm">确定</button>
             </div>
         </div>
     </div>
 
     <!-- Emoji Picker -->
-    <div id="emoji-overlay" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center backdrop-blur-sm px-4">
-        <div class="bg-white rounded-xl p-4 w-full max-w-md shadow-2xl max-h-[80vh] flex flex-col">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-lg font-bold text-gray-800">✨ 选择贴纸</h2>
-                <button onclick="document.getElementById('emoji-overlay').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 text-3xl p-2">&times;</button>
+    <div id="emoji-overlay" class="fixed inset-0 bg-gray-900/40 hidden z-50 flex items-center justify-center backdrop-blur-[2px] px-4">
+        <div class="bg-white rounded-2xl p-4 w-full max-w-sm shadow-2xl max-h-[70vh] flex flex-col modal-enter ring-4 ring-yellow-50">
+            <div class="flex justify-between items-center mb-4 px-2">
+                <h2 class="text-lg text-gray-800" id="emoji-title">✨ 选择贴纸</h2>
+                <button onclick="document.getElementById('emoji-overlay').classList.add('hidden')" class="text-gray-400 hover:text-red-500 text-2xl w-8 h-8 flex items-center justify-center rounded-full hover:bg-red-50 transition">&times;</button>
             </div>
-            <div id="emoji-grid" class="grid grid-cols-6 gap-2 overflow-y-auto custom-scroll p-2 text-center"></div>
+            <div id="emoji-grid" class="grid grid-cols-5 gap-2 overflow-y-auto custom-scroll p-1 text-center"></div>
         </div>
     </div>
 
@@ -173,70 +210,114 @@
             const ctx = canvas.getContext('2d');
             const container = document.getElementById('canvas-container');
             
-            // --- 常量与配置 ---
-            const STORAGE_KEY = 'kids_diary_clean_v2'; 
-            const EMOJI_LIB = {
-                person: ["👶","👧","🧒","👦","👩","🧑","👨","👵","🧓","👴","👲","👳","👮","👷","💂","🕵️","👩‍⚕️","🧑‍🏫","👨‍🏫","👩‍🎓","👨‍🎓","👩‍🍳","👨‍🍳","👩‍🔧","👨‍🔧","🦸","🦹","🧙","🧚","🧛","🧜","🧝","🧞","🧟","👻","👽","🤖","👸","🤴"],
-                event: ["⚽","🏀","🏈","⚾","🎾","🏐","🏉","🎱","🏓","🏸","🥅","🥊","🥋","🎽","🛹","🛼","🎨","🎬","🎤","🎧","🎼","🎹","🥁","🎷","🎺","🎸","🎻","🎲","♟","🎯","🎳","🎮","🎰","🧩","📝","📚","🎒","🏫","🚌","🥪","🍱","🎂","🥤","💊","💉","🌡","🧹","🧺","🛒","🎁","📱","💻","📺","📷","📹","🕹","🧸","🛍"],
-                result: ["😀","😃","😄","😁","😆","😅","🤣","😂","🙂","🙃","😉","😊","😇","🥰","😍","🤩","😘","😗","😚","😙","😋","😛","😜","🤪","😝","🤑","🤗","🤭","🤫","🤔","🤐","🤨","😐","😑","😶","😏","😒","🙄","😬","🤥","😌","😔","😪","🤤","😴","😷","🤒","🤕","🤢","🤮","🤧","🥵","🥶","🥴","😵","🤯","🤠","🥳","😎","🤓","🧐","😕","😟","🙁","😮","😯","😲","😳","🥺","😦","😧","😨","😰","😥","😢","😭","😱","😖","😣","😞","😓","😩","😫","🥱","😤","😡","😠","🤬","😈","👿","💀","☠","💩","🤡","👹","👺"]
-            };
-            const LABEL_FONT_SIZE = 16;
-            const LABEL_LINE_HEIGHT = 24;
-            const LABEL_MAX_WIDTH = 120;
+            // --- 配置 ---
+            const STORAGE_KEY_DRAFT = 'kids_diary_draft_v4'; 
+            const STORAGE_KEY_HISTORY = 'kids_diary_history_v1';
+            const ME_ID = 'USER_ME';
+            
+            // 解决 Retina 屏幕模糊问题
+            let dpr = window.devicePixelRatio || 1;
 
-            // --- 状态 ---
+            const EMOJI_LIB = {
+                person: ["👶","👧","🧒","👦","👩","🧑","👨","👵","🧓","👴","👮","👩‍⚕️","🧑‍🏫","👨‍🍳","🦸","🧙","🧚","👻","🤖","👸","🐶","🐱"],
+                event: ["⚽","🏀","🎨","🎬","🎮","📚","🏫","🥪","🎂","🎁","📱","🚌","💊","🧹","🛒","🏖️","🏥","🎢","🧸"],
+                fruit: ["🍊","🍎","🍐","🍋","🍌","🍉","🍇","🍓","🫐","🍈","🍒","🍑","🥭","🍍","🥥","🥝"],
+                group: ["🚩","🏠","🏕️","🚤","🚀","🏰","🏟️","🏫","🌳"]
+            };
+
             let nodes = [];
             let links = [];
-            let width, height;
+            let width, height; // CSS 像素尺寸
             let mode = 'move';
-            let dragItemData = null;
-            let pendingNodeCreation = null;
-
+            
+            // 交互状态
             const state = {
                 draggingNode: null,
                 connectingNode: null,
-                hoverNode: null,
-                hoverLink: null,
+                hoverNode: null, // 鼠标悬停的节点
+                hoverLink: null, // 鼠标悬停的连线 (新功能)
                 dragOffset: { x: 0, y: 0 },
-                mouseX: 0,
-                mouseY: 0,
-                lastTouchTime: 0
+                mouseX: 0, mouseY: 0,
+                lastTouchTime: 0,
+                longPressTimer: null
             };
+
+            // 颜色池
+            const COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEEAD', '#FF9F43', '#A3CB38', '#f368e0'];
 
             function init() {
                 resize();
                 window.addEventListener('resize', resize);
                 setupEvents();
-                updateDate();
-                loadAutoSave();
+                updateDateDisplay();
+                loadDraft();
+                loadHistory();
                 ensureMeNode();
                 requestAnimationFrame(animate);
             }
 
             function ensureMeNode() {
-                if (!nodes.find(n => n.id === 'USER_ME')) {
+                if (!nodes.find(n => n.id === ME_ID)) {
                     nodes.push({
-                        id: 'USER_ME',
+                        id: ME_ID,
                         x: width / 2,
                         y: height / 2,
                         type: 'person',
-                        emoji: '🍊',
-                        color: '#FF9F43',
-                        label: '我'
+                        emoji: '🕵️',
+                        color: '#FFD93D',
+                        label: '我',
+                        scale: 1 // 动画缩放因子
                     });
                 }
             }
 
-            function updateDate() {
+            function updateDateDisplay() {
                 const now = new Date();
-                document.getElementById('date-display').innerText = now.toLocaleDateString('zh-CN', { weekday: 'short', year: '2-digit', month: 'numeric', day: 'numeric' });
+                const options = { weekday: 'short', month: 'numeric', day: 'numeric' };
+                document.getElementById('date-display').innerText = now.toLocaleDateString('zh-CN', options);
+                document.getElementById('date-input').valueAsDate = new Date();
             }
 
             function resize() {
                 width = container.clientWidth;
                 height = container.clientHeight;
-                canvas.width = width;
-                canvas.height = height;
+                
+                // 关键修复：处理 High DPI
+                canvas.width = width * dpr;
+                canvas.height = height * dpr;
+                canvas.style.width = width + 'px';
+                canvas.style.height = height + 'px';
+                
+                ctx.scale(dpr, dpr);
+
+                // 简单的边界检查，防止 Resize 后节点消失
+                nodes.forEach(n => {
+                    n.x = Math.min(Math.max(n.x, 30), width - 30);
+                    n.y = Math.min(Math.max(n.y, 30), height - 30);
+                });
+            }
+
+            function toggleView(viewName) {
+                const board = document.getElementById('view-board');
+                const diary = document.getElementById('view-diary');
+                const tools = document.getElementById('board-tools');
+                const btnBoard = document.getElementById('nav-board');
+                const btnDiary = document.getElementById('nav-diary');
+
+                if (viewName === 'board') {
+                    board.classList.remove('hidden');
+                    diary.classList.add('hidden');
+                    tools.classList.remove('hidden');
+                    btnBoard.className = "flex items-center gap-1 px-4 py-2 rounded-lg text-sm transition-all shadow-sm bg-white text-blue-600 ring-1 ring-black/5 font-bold";
+                    btnDiary.className = "flex items-center gap-1 px-4 py-2 rounded-lg text-sm transition-all text-gray-500 hover:bg-gray-200/50";
+                } else {
+                    board.classList.add('hidden');
+                    diary.classList.remove('hidden');
+                    tools.classList.add('hidden');
+                    btnDiary.className = "flex items-center gap-1 px-4 py-2 rounded-lg text-sm transition-all shadow-sm bg-white text-blue-600 ring-1 ring-black/5 font-bold";
+                    btnBoard.className = "flex items-center gap-1 px-4 py-2 rounded-lg text-sm transition-all text-gray-500 hover:bg-gray-200/50";
+                    renderDiaryList(); 
+                }
             }
 
             function setMode(newMode) {
@@ -244,514 +325,644 @@
                 const btnMove = document.getElementById('btn-move');
                 const btnLink = document.getElementById('btn-link');
                 const toast = document.getElementById('mode-toast');
+                const toastMsg = document.getElementById('toast-msg');
+                const toastIcon = document.getElementById('toast-icon');
                 
-                const activeClass = "bg-white shadow text-blue-600";
-                const inactiveClass = "text-gray-500 hover:bg-gray-200";
-                
+                const activeClass = "bg-white shadow text-blue-600 ring-1 ring-blue-100 transform scale-105";
+                const inactiveClass = "text-gray-400 hover:text-blue-500";
+
                 if (mode === 'move') {
-                    btnMove.className = `px-3 py-1 rounded-md text-sm font-bold transition flex items-center gap-1 ${activeClass}`;
-                    btnLink.className = `px-3 py-1 rounded-md text-sm font-bold transition flex items-center gap-1 ${inactiveClass}`;
+                    btnMove.className = `w-8 h-8 flex items-center justify-center rounded-md transition-all text-lg ${activeClass}`;
+                    btnLink.className = `w-8 h-8 flex items-center justify-center rounded-md transition-all text-lg ${inactiveClass}`;
                     container.classList.remove('mode-link');
+                    toastMsg.innerText = "移动模式"; toastIcon.innerText = "✋";
                 } else {
-                    btnLink.className = `px-3 py-1 rounded-md text-sm font-bold transition flex items-center gap-1 ${activeClass}`;
-                    btnMove.className = `px-3 py-1 rounded-md text-sm font-bold transition flex items-center gap-1 ${inactiveClass}`;
+                    btnLink.className = `w-8 h-8 flex items-center justify-center rounded-md transition-all text-lg ${activeClass}`;
+                    btnMove.className = `w-8 h-8 flex items-center justify-center rounded-md transition-all text-lg ${inactiveClass}`;
                     container.classList.add('mode-link');
-                    toast.innerText = "🔗 连线模式";
-                    toast.style.opacity = '1';
-                    setTimeout(() => toast.style.opacity = '0', 2000);
+                    toastMsg.innerText = "连线模式"; toastIcon.innerText = "🔗";
                 }
+
+                toast.style.opacity = '1';
+                setTimeout(() => toast.style.opacity = '0', 1500);
             }
 
-            // --- 数据清洗 ---
-            function getCleanData() {
-                const cleanNodes = nodes.map(n => ({
-                    id: n.id,
-                    x: Math.round(n.x),
-                    y: Math.round(n.y),
-                    type: n.type,
-                    emoji: n.emoji,
-                    color: n.color,
-                    label: n.label
-                }));
-                const cleanLinks = links.map(l => ({
-                    id: l.id,
-                    source: l.source,
-                    target: l.target,
-                    label: l.label
-                }));
-                return { nodes: cleanNodes, links: cleanLinks, timestamp: Date.now() };
-            }
-
-            // --- 绘图 ---
+            // --- 绘图核心 ---
             function animate() {
                 ctx.clearRect(0, 0, width, height);
+
+                // 绘制连线
                 links.forEach(link => drawLink(link));
-                if (state.connectingNode) drawTempLink(state.connectingNode, state.mouseX, state.mouseY);
+                
+                // 绘制正在拖拽的临时线
+                if (state.connectingNode) {
+                    drawCurve(state.connectingNode.x, state.connectingNode.y, state.mouseX, state.mouseY, '#4299e1', true);
+                }
+
+                // 绘制节点
                 nodes.forEach(node => drawNode(node));
+
                 requestAnimationFrame(animate);
             }
 
             function drawNode(node) {
                 const isHover = state.hoverNode === node;
                 const isDragging = state.draggingNode === node;
-                const isMe = node.id === 'USER_ME';
+                const isMe = node.id === ME_ID;
                 
+                // 简单的弹性动画插值
+                const targetScale = isDragging || isHover ? 1.15 : 1.0;
+                node.scale = node.scale ? node.scale * 0.8 + targetScale * 0.2 : 1.0;
+
                 ctx.save();
                 ctx.translate(node.x, node.y);
-                if (isDragging) ctx.scale(1.15, 1.15);
+                ctx.scale(node.scale, node.scale);
 
-                ctx.shadowColor = 'rgba(0,0,0,0.15)';
-                ctx.shadowBlur = isHover || isMe ? 15 : 5;
-                ctx.shadowOffsetY = isHover || isMe ? 8 : 3;
+                // 阴影
+                ctx.shadowColor = 'rgba(0,0,0,0.1)';
+                ctx.shadowBlur = isDragging ? 20 : 10;
+                ctx.shadowOffsetY = isDragging ? 10 : 5;
 
+                // 形状
                 ctx.beginPath();
-                if (node.type === 'person') ctx.arc(0, 0, 32, 0, Math.PI * 2);
-                else if (node.type === 'event') ctx.roundRect(-30, -30, 60, 60, 10);
-                else ctx.ellipse(0, 0, 34, 24, 0, 0, Math.PI * 2);
-                
-                ctx.fillStyle = node.color || '#fff';
-                ctx.fill();
-                ctx.lineWidth = isMe ? 4 : 3;
-                ctx.strokeStyle = '#fff';
-                ctx.stroke();
+                if (node.type === 'group') {
+                    ctx.roundRect(-45, -45, 90, 90, 16);
+                    ctx.setLineDash([8, 6]);
+                } else if (node.type === 'event') {
+                    ctx.roundRect(-35, -35, 70, 70, 14);
+                } else {
+                    ctx.arc(0, 0, 36, 0, Math.PI * 2);
+                }
 
+                ctx.fillStyle = node.color;
+                ctx.fill();
+                
+                // 描边
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = '#fff';
+                if (isMe) {
+                    ctx.strokeStyle = '#FFD93D'; // 金色边框
+                } else if (state.connectingNode && isHover && state.connectingNode !== node) {
+                    ctx.strokeStyle = '#4299e1'; // 连线吸附高亮
+                }
+                ctx.stroke();
+                ctx.setLineDash([]); // 重置虚线
+
+                // Emoji
                 ctx.shadowColor = 'transparent';
-                ctx.font = "34px Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji";
+                ctx.font = node.type === 'group' ? "48px Apple Color Emoji, Segoe UI Emoji" : "40px Apple Color Emoji, Segoe UI Emoji";
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
-                ctx.fillText(node.emoji, 0, 2);
+                // 微调 Emoji 垂直位置
+                const yOffset = navigator.platform.indexOf('Win') > -1 ? 4 : 2; 
+                ctx.fillText(node.emoji, 0, yOffset);
 
-                drawMultiLineText(node.label, 0, 42, true);
+                // 标签
+                drawLabel(node.label, 0, node.type === 'group' ? 58 : 50, true, node.color);
 
-                if (state.connectingNode && isHover && state.connectingNode !== node) {
-                    ctx.strokeStyle = "#4299e1";
-                    ctx.lineWidth = 3;
-                    ctx.beginPath();
-                    ctx.arc(0, 0, 48, 0, Math.PI*2);
-                    ctx.stroke();
-                }
                 ctx.restore();
             }
 
             function drawLink(link) {
-                const source = nodes.find(n => n.id === link.source);
-                const target = nodes.find(n => n.id === link.target);
-                if (!source || !target) return;
+                const s = nodes.find(n => n.id === link.source);
+                const t = nodes.find(n => n.id === link.target);
+                if (!s || !t) return;
 
                 const isHover = state.hoverLink === link;
-                const dx = target.x - source.x;
-                const dy = target.y - source.y;
-                const dist = Math.sqrt(dx*dx + dy*dy);
-                const cpX = (source.x + target.x) / 2;
-                const cpY = (source.y + target.y) / 2 + (dist * 0.2); 
+                const color = isHover ? '#4299e1' : '#CBD5E0';
+                const lineWidth = isHover ? 5 : 3;
 
-                ctx.beginPath();
-                ctx.moveTo(source.x, source.y);
-                ctx.quadraticCurveTo(cpX, cpY, target.x, target.y);
-                ctx.lineWidth = isHover ? 6 : 3;
-                ctx.strokeStyle = isHover ? '#FF6B6B' : '#CBD5E0';
-                ctx.lineCap = 'round';
-                ctx.stroke();
+                drawCurve(s.x, s.y, t.x, t.y, color, false, lineWidth);
 
+                // 标签 (绘制在曲线中点)
                 if (link.label) {
+                    const mid = getCurveMidPoint(s.x, s.y, t.x, t.y);
                     ctx.save();
-                    ctx.translate(cpX, cpY); 
-                    drawMultiLineText(link.label, 0, 0, false, isHover);
+                    ctx.translate(mid.x, mid.y);
+                    drawLabel(link.label, 0, 0, false, isHover ? '#ebf8ff' : '#fff');
                     ctx.restore();
                 }
-                drawArrow(cpX, cpY, target.x, target.y, ctx.strokeStyle);
             }
 
-            function drawMultiLineText(text, x, y, isNodeLabel, isLinkHover) {
-                ctx.font = `bold ${LABEL_FONT_SIZE}px 'YouYuan', sans-serif`;
-                const lines = getLines(ctx, text, LABEL_MAX_WIDTH);
-                const padding = 10;
-                const maxW = Math.max(...lines.map(l => ctx.measureText(l).width));
-                const boxW = maxW + padding * 2;
-                const boxH = (lines.length * LABEL_LINE_HEIGHT) + padding;
-                
-                ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+            function drawCurve(x1, y1, x2, y2, color, dashed = false, width = 3) {
                 ctx.beginPath();
-                const startY = isNodeLabel ? y : y - boxH/2;
-                ctx.roundRect(x - boxW/2, startY, boxW, boxH, 8);
+                ctx.moveTo(x1, y1);
+                
+                // 贝塞尔曲线控制点，使线条稍微弯曲
+                const dx = x2 - x1;
+                const dy = y2 - y1;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                // 动态曲率：距离越远弯曲越少，避免跑出屏幕
+                const factor = 0.2; 
+                const cpX = (x1 + x2) / 2 - dy * factor * 0.5; // 稍微偏移
+                const cpY = (y1 + y2) / 2 + dx * factor * 0.5;
+
+                ctx.quadraticCurveTo(cpX, cpY, x2, y2);
+                
+                ctx.lineCap = 'round';
+                ctx.lineWidth = width;
+                ctx.strokeStyle = color;
+                if (dashed) ctx.setLineDash([8, 8]);
+                else ctx.setLineDash([]);
+                ctx.stroke();
+                return { cpX, cpY };
+            }
+
+            function getCurveMidPoint(x1, y1, x2, y2) {
+                // 简化估算，直接取直线中点偏移一点，用于放文字足够了
+                // 如果需要精确贝塞尔中点公式太复杂，这里做个视觉欺骗
+                const dx = x2 - x1;
+                const dy = y2 - y1;
+                const factor = 0.2;
+                const midX = (x1 + x2) / 2 - dy * factor * 0.25; 
+                const midY = (y1 + y2) / 2 + dx * factor * 0.25;
+                return { x: midX, y: midY };
+            }
+
+            function drawLabel(text, x, y, isNode, bgOverride) {
+                ctx.font = "bold 14px 'ZCOOL KuaiLe', sans-serif";
+                const metrics = ctx.measureText(text);
+                const w = metrics.width + 16;
+                const h = 26;
+                
+                ctx.save();
+                ctx.shadowColor = 'rgba(0,0,0,0.1)';
+                ctx.shadowBlur = 4;
+                ctx.shadowOffsetY = 2;
+                
+                ctx.fillStyle = bgOverride || "rgba(255, 255, 255, 0.95)";
+                ctx.beginPath();
+                const startY = isNode ? y : y - h/2;
+                ctx.roundRect(x - w/2, startY, w, h, 8);
                 ctx.fill();
                 
-                if (!isNodeLabel) {
-                    ctx.lineWidth = 1;
-                    ctx.strokeStyle = isLinkHover ? '#FF6B6B' : '#CBD5E0';
-                    ctx.stroke();
-                }
-
-                ctx.fillStyle = "#4a5568";
+                // 文字颜色
+                ctx.fillStyle = "#4b5563";
                 ctx.textAlign = "center";
-                ctx.textBaseline = "top";
-                lines.forEach((line, i) => {
-                    ctx.fillText(line, x, startY + padding/2 + (i * LABEL_LINE_HEIGHT));
-                });
-            }
-
-            function getLines(ctx, text, maxWidth) {
-                const chars = text.split('');
-                let lines = [], cur = chars[0];
-                for (let i = 1; i < chars.length; i++) {
-                    if (ctx.measureText(cur + chars[i]).width < maxWidth) cur += chars[i];
-                    else { lines.push(cur); cur = chars[i]; }
-                }
-                lines.push(cur);
-                return lines;
-            }
-
-            function drawTempLink(s, mx, my) {
-                ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(mx, my);
-                ctx.lineWidth = 2; ctx.strokeStyle = '#4299e1'; ctx.setLineDash([5, 5]); ctx.stroke(); ctx.setLineDash([]);
-                ctx.beginPath(); ctx.arc(mx, my, 5, 0, Math.PI*2); ctx.fillStyle = '#4299e1'; ctx.fill();
-            }
-
-            function drawArrow(fx, fy, tx, ty, color) {
-                const angle = Math.atan2(ty - fy, tx - fx);
-                const offset = 35;
-                const ex = tx - Math.cos(angle) * offset, ey = ty - Math.sin(angle) * offset;
-                ctx.beginPath(); ctx.moveTo(ex, ey);
-                ctx.lineTo(ex - 12 * Math.cos(angle - Math.PI/6), ey - 12 * Math.sin(angle - Math.PI/6));
-                ctx.lineTo(ex - 12 * Math.cos(angle + Math.PI/6), ey - 12 * Math.sin(angle + Math.PI/6));
-                ctx.fillStyle = color; ctx.fill();
+                ctx.textBaseline = "middle";
+                ctx.shadowColor = 'transparent';
+                ctx.fillText(text, x, startY + h/2 + 1);
+                ctx.restore();
             }
 
             // --- 事件处理 ---
-
             function getPointerPos(e) {
                 const rect = canvas.getBoundingClientRect();
-                if (e.touches && e.touches.length > 0) {
-                    return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                return { 
+                    x: (clientX - rect.left), // 这里的坐标是 CSS 像素
+                    y: (clientY - rect.top)
+                };
+            }
+
+            // 关键优化：使用 isPointInStroke 进行更精确且易用的连线判定
+            function checkHover(x, y) {
+                // 为了检测，需要重绘路径 (不可见)
+                // 1. 检查连线 (优先度低)
+                state.hoverLink = null;
+                // 逆序遍历，让上层的线优先
+                for (let i = links.length - 1; i >= 0; i--) {
+                    const l = links[i];
+                    const s = nodes.find(n => n.id === l.source);
+                    const t = nodes.find(n => n.id === l.target);
+                    if (!s || !t) continue;
+
+                    // 重新构建路径
+                    drawCurve(s.x, s.y, t.x, t.y, 'transparent', false, 15); // 15px 宽度的检测区域
+                    if (ctx.isPointInStroke(x * dpr, y * dpr)) { // 注意：isPointInStroke 使用 Canvas 内部分辨率
+                        state.hoverLink = l;
+                        break; 
+                    }
                 }
-                return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+
+                // 2. 检查节点 (优先度高，覆盖连线)
+                state.hoverNode = null;
+                for (let i = nodes.length - 1; i >= 0; i--) {
+                    const n = nodes[i];
+                    const r = n.type === 'group' ? 50 : 40; // 点击区域略大于绘制区域
+                    if (Math.abs(x - n.x) < r && Math.abs(y - n.y) < r) {
+                        state.hoverNode = n;
+                        state.hoverLink = null; // 选中节点时清除连线选中
+                        break;
+                    }
+                }
+
+                container.style.cursor = state.hoverNode ? 'grab' : (state.hoverLink ? 'pointer' : (mode==='link' ? 'crosshair' : 'default'));
             }
 
             function handleStart(e) {
-                if(e.type === 'touchstart') {
-                    const now = Date.now();
-                    if (now - state.lastTouchTime < 300) {
-                        handleDoubleClick(e);
-                        return;
-                    }
-                    state.lastTouchTime = now;
-                }
-
-                const { x, y } = getPointerPos(e);
-                const clickedNode = getNodeAt(x, y);
+                // e.preventDefault(); // 不能全阻止，否则输入框无法失焦，但此处 Canvas 需要阻止滚动
+                if(e.target === canvas) e.preventDefault(); 
                 
-                if (clickedNode) {
-                    if (mode === 'link' || e.shiftKey) {
-                        state.connectingNode = clickedNode;
-                        state.draggingNode = null;
-                    } else {
-                        state.draggingNode = clickedNode;
-                        state.dragOffset = { x: x - clickedNode.x, y: y - clickedNode.y };
-                    }
+                const { x, y } = getPointerPos(e);
+                checkHover(x, y);
+
+                // 双击检测
+                const now = Date.now();
+                if (now - state.lastTouchTime < 300) {
+                    handleDoubleClick(e);
+                    return;
                 }
+                state.lastTouchTime = now;
+
+                if (state.hoverNode) {
+                    if (mode === 'link' || e.shiftKey) {
+                        state.connectingNode = state.hoverNode;
+                    } else {
+                        state.draggingNode = state.hoverNode;
+                        state.dragOffset = { x: x - state.hoverNode.x, y: y - state.hoverNode.y };
+                    }
+                } else {
+                    // 长按逻辑 (例如：清空选中)
+                }
+                
+                state.mouseX = x; state.mouseY = y;
             }
 
             function handleMove(e) {
-                e.preventDefault();
+                if(e.target === canvas) e.preventDefault();
                 const { x, y } = getPointerPos(e);
-                state.mouseX = x;
-                state.mouseY = y;
-                state.hoverNode = getNodeAt(x, y);
-                state.hoverLink = getLinkAt(x, y);
-
-                if (!e.touches) {
-                    if (state.connectingNode) canvas.style.cursor = 'crosshair';
-                    else if (state.hoverNode) canvas.style.cursor = (mode === 'link' || e.shiftKey) ? 'crosshair' : 'move';
-                    else if (state.hoverLink) canvas.style.cursor = 'pointer';
-                    else canvas.style.cursor = 'default';
-                }
-
+                state.mouseX = x; state.mouseY = y;
+                
                 if (state.draggingNode) {
-                    state.draggingNode.x = x - state.dragOffset.x;
-                    state.draggingNode.y = y - state.dragOffset.y;
+                    // 边界限制：不让节点跑出去
+                    const margin = 30;
+                    state.draggingNode.x = Math.max(margin, Math.min(width - margin, x - state.dragOffset.x));
+                    state.draggingNode.y = Math.max(margin, Math.min(height - margin, y - state.dragOffset.y));
+                } else if (state.connectingNode) {
+                    // 仅更新 state.mouseX/Y 用于绘制连线动画
+                } else {
+                    checkHover(x, y);
                 }
             }
 
             function handleEnd(e) {
-                const x = state.mouseX;
-                const y = state.mouseY;
-
                 if (state.connectingNode) {
-                    const targetNode = getNodeAt(x, y);
-                    if (targetNode && targetNode !== state.connectingNode) {
-                        createLink(state.connectingNode, targetNode);
+                    // 结束连线
+                    checkHover(state.mouseX, state.mouseY); // 重新检测释放位置下的节点
+                    const target = state.hoverNode;
+                    
+                    if (target && target !== state.connectingNode) {
+                        const exists = links.find(l => 
+                            (l.source === state.connectingNode.id && l.target === target.id) || 
+                            (l.source === target.id && l.target === state.connectingNode.id)
+                        );
+                        
+                        if (!exists) {
+                            links.push({ 
+                                id: Date.now().toString(), 
+                                source: state.connectingNode.id, 
+                                target: target.id, 
+                                label: "互动" 
+                            });
+                            saveDraft();
+                        }
                     }
                     state.connectingNode = null;
                 }
+                
                 if (state.draggingNode) {
                     state.draggingNode = null;
-                    saveAutoSave();
+                    saveDraft();
                 }
             }
 
             function handleDoubleClick(e) {
+                if (state.hoverNode) {
+                    const n = state.hoverNode;
+                    if (n.id === ME_ID) {
+                        showEmojiPicker('fruit', (emoji) => { n.emoji = emoji; saveDraft(); });
+                    } else {
+                        showDialog({
+                            title: "✏️ 它是谁？",
+                            inputValue: n.label,
+                            onConfirm: (val) => { 
+                                if(val) { n.label = val; saveDraft(); return true; } 
+                            }
+                        });
+                    }
+                } else if (state.hoverLink) {
+                    const l = state.hoverLink;
+                    showDialog({
+                        title: "✏️ 发生了什么？",
+                        inputValue: l.label,
+                        onConfirm: (val) => { 
+                            if(val) { l.label = val; saveDraft(); return true; }
+                        }
+                    });
+                }
+            }
+            
+            // 右键菜单
+            function handleContextMenu(e) {
                 e.preventDefault();
                 const { x, y } = getPointerPos(e);
-                const clickedNode = getNodeAt(x, y);
-                const clickedLink = getLinkAt(x, y);
+                checkHover(x, y);
 
-                if (clickedNode) {
+                if (state.hoverNode) {
+                    if (state.hoverNode.id === ME_ID) return;
                     showDialog({
-                        title: "✏️ 修改文字",
-                        inputValue: clickedNode.label,
-                        onConfirm: (val) => { if(val) { clickedNode.label = val.trim(); saveAutoSave(); } },
-                        confirmText: "确定"
+                        title: "🗑️ 删除",
+                        desc: `要让 "${state.hoverNode.label}" 消失吗？`,
+                        isConfirm: true,
+                        onConfirm: () => {
+                            nodes = nodes.filter(n => n.id !== state.hoverNode.id);
+                            links = links.filter(l => l.source !== state.hoverNode.id && l.target !== state.hoverNode.id);
+                            saveDraft();
+                            state.hoverNode = null;
+                            return true;
+                        }
                     });
-                } else if (clickedLink) {
+                } else if (state.hoverLink) {
                     showDialog({
-                        title: "✏️ 互动描述",
-                        inputValue: clickedLink.label,
-                        onConfirm: (val) => { if(val) { clickedLink.label = val.trim(); saveAutoSave(); } },
-                        confirmText: "确定"
+                        title: "🗑️ 断开连接",
+                        desc: "要切断这条连线吗？",
+                        isConfirm: true,
+                        onConfirm: () => {
+                            links = links.filter(l => l.id !== state.hoverLink.id);
+                            saveDraft();
+                            state.hoverLink = null;
+                            return true;
+                        }
                     });
                 }
             }
 
             function setupEvents() {
+                // 指针事件 (Pointer Events) 统一处理鼠标和触摸
+                // 但为了兼容性，仍使用 mouse/touch 分离，或添加 touch-action css
                 canvas.addEventListener('mousedown', handleStart);
                 canvas.addEventListener('mousemove', handleMove);
                 canvas.addEventListener('mouseup', handleEnd);
-                canvas.addEventListener('dblclick', handleDoubleClick);
-                canvas.addEventListener('contextmenu', handleContextMenu);
-
-                canvas.addEventListener('touchstart', handleStart, { passive: false });
-                canvas.addEventListener('touchmove', handleMove, { passive: false });
+                canvas.addEventListener('mouseleave', () => { state.draggingNode = null; state.connectingNode = null; });
+                
+                canvas.addEventListener('touchstart', handleStart, {passive: false});
+                canvas.addEventListener('touchmove', handleMove, {passive: false});
                 canvas.addEventListener('touchend', handleEnd);
+                
+                canvas.addEventListener('contextmenu', handleContextMenu);
             }
 
-            function handleContextMenu(e) {
-                e.preventDefault();
-                const { x, y } = getPointerPos(e);
-                const clickedNode = getNodeAt(x, y);
-                const clickedLink = getLinkAt(x, y);
-
-                if (clickedNode) {
-                    if (clickedNode.id === 'USER_ME') {
-                        alert("这个是你自己，不能删除哦！");
-                        return;
-                    }
-                    showDialog({
-                        title: "🗑️ 删除贴纸",
-                        desc: `确定要删除 "${clickedNode.label}" 吗？`,
-                        isDelete: true,
-                        onConfirm: () => {
-                            nodes = nodes.filter(n => n !== clickedNode);
-                            links = links.filter(l => l.source !== clickedNode.id && l.target !== clickedNode.id);
-                            saveAutoSave();
-                        },
-                        confirmText: "删除"
-                    });
-                } else if (clickedLink) {
-                    showDialog({
-                        title: "🗑️ 删除连线",
-                        desc: "确定要删除这条连线吗？",
-                        isDelete: true,
-                        onConfirm: () => {
-                            links = links.filter(l => l !== clickedLink);
-                            saveAutoSave();
-                        },
-                        confirmText: "删除"
-                    });
-                }
-            }
-
-            function getNodeAt(x, y) {
-                for (let i = nodes.length - 1; i >= 0; i--) {
-                    const n = nodes[i];
-                    if (Math.abs(x - n.x) < 45 && y > n.y - 40 && y < n.y + 70) return n;
-                }
-                return null;
-            }
-            function getLinkAt(x, y) {
-                for (let l of links) {
-                    const s = nodes.find(n => n.id === l.source);
-                    const t = nodes.find(n => n.id === l.target);
-                    if (!s || !t) continue;
-                    const cx = (s.x + t.x) / 2, cy = (s.y + t.y) / 2 + (Math.sqrt((t.x - s.x)**2 + (t.y - s.y)**2) * 0.2);
-                    if (Math.sqrt((x - cx)**2 + (y - cy)**2) < 30) return l;
-                }
-                return null;
-            }
-
-            // --- 拖拽创建 ---
-            function handleDragStart(e, type, emoji, color) {
-                dragItemData = { type, emoji, color };
-                e.dataTransfer.effectAllowed = 'copy';
-            }
-            function handleDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }
-            function handleDrop(e) {
-                e.preventDefault();
-                if (!dragItemData) return;
-                const { x, y } = getPointerPos(e);
-                if (dragItemData.emoji === 'SELECT_ME') {
-                    pendingNodeCreation = { type: dragItemData.type, x, y };
-                    showEmojiPicker(dragItemData.type);
-                } else {
-                    createNode(dragItemData.type, dragItemData.emoji, dragItemData.color, x, y);
-                }
-                dragItemData = null;
-            }
-            
-            function handleTouchDragStart(e, type, emoji, color) {
-                e.preventDefault();
-                const x = width/2 + (Math.random()*40 - 20);
-                const y = height/2 + (Math.random()*40 - 20);
+            // --- 节点操作 (优化为点击添加，而非拖拽) ---
+            function addNode(type, emoji, color) {
                 if (emoji === 'SELECT_ME') {
-                    pendingNodeCreation = { type, x, y };
-                    showEmojiPicker(type);
+                    showEmojiPicker(type, (selectedEmoji) => {
+                        createNode(type, selectedEmoji, type === 'person' ? (color === 'RANDOM' ? getRandomColor() : color) : '#ffffff');
+                    });
                 } else {
-                    createNode(type, emoji, color, x, y);
-                    const t = document.getElementById('mode-toast');
-                    t.innerText = "已添加到画布中心"; t.style.opacity = 1;
-                    setTimeout(()=>t.style.opacity=0, 1500);
+                    createNode(type, emoji, color);
                 }
+                
+                // 移动端体验：自动关闭侧边栏（如果以后做成抽屉式）
+                // 震动反馈
+                if (navigator.vibrate) navigator.vibrate(50);
             }
 
-            function createNode(type, emoji, color, x, y) {
+            function getRandomColor() { return COLORS[Math.floor(Math.random() * COLORS.length)]; }
+
+            function createNode(type, emoji, color) {
+                // 放置在画布中心，带一点随机偏移
+                const x = width / 2 + (Math.random() * 60 - 30);
+                const y = height / 2 + (Math.random() * 60 - 30);
+                
                 const id = Date.now().toString(36) + Math.random().toString(36).slice(2);
-                let label = type === 'person' ? "新朋友" : (type === 'event' ? "新事件" : "心情");
-                nodes.push({ id, x, y, type, emoji, color, label });
-                saveAutoSave();
-            }
-            function createLink(nA, nB) {
-                if (links.find(l => l.source === nA.id && l.target === nB.id)) return;
-                links.push({ id: Date.now().toString(), source: nA.id, target: nB.id, label: "互动" });
-                saveAutoSave();
+                let label = "新事物";
+                if (type === 'person') label = "新朋友";
+                if (type === 'group') label = "基地";
+                
+                nodes.push({ id, x, y, type, emoji, color, label, scale: 0 }); // scale 0 for pop-in animation
+                saveDraft();
             }
 
-            // --- UI & 存取 ---
-            function showEmojiPicker(type) {
+            // --- 模态框逻辑 (修复 Bug) ---
+            let currentConfirmCallback = null;
+
+            function showDialog({ title, desc, inputValue, onConfirm, isConfirm }) {
+                const overlay = document.getElementById('modal-overlay');
+                const titleEl = document.getElementById('modal-title');
+                const descEl = document.getElementById('modal-desc');
+                const inputEl = document.getElementById('modal-input');
+                const dateEl = document.getElementById('modal-date-picker');
+                const btn = document.getElementById('modal-action');
+                
+                overlay.classList.remove('hidden');
+                titleEl.innerText = title;
+                
+                if (isConfirm) {
+                    inputEl.classList.add('hidden');
+                    dateEl.classList.add('hidden');
+                    descEl.classList.remove('hidden');
+                    descEl.innerText = desc;
+                } else {
+                    // 普通输入模式
+                    descEl.classList.add('hidden');
+                    dateEl.classList.add('hidden');
+                    inputEl.classList.remove('hidden');
+                    inputEl.value = inputValue || "";
+                    setTimeout(() => inputEl.focus(), 100);
+                }
+
+                // 移除旧的监听器 (防止多次绑定)
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+                
+                newBtn.onclick = () => {
+                    if (onConfirm) {
+                        const result = onConfirm(inputEl.value);
+                        // 只有回调返回 true (或不返回 false) 时才关闭
+                        if (result !== false) closeModal();
+                    } else {
+                        closeModal();
+                    }
+                };
+            }
+
+            function closeModal() {
+                document.getElementById('modal-overlay').classList.add('hidden');
+            }
+
+            // --- 日记功能 ---
+            let diaryHistory = [];
+
+            function saveToDiary() {
+                // 特殊模态框逻辑
+                const overlay = document.getElementById('modal-overlay');
+                const titleEl = document.getElementById('modal-title');
+                const descEl = document.getElementById('modal-desc');
+                const inputEl = document.getElementById('modal-input');
+                const datePicker = document.getElementById('modal-date-picker');
+                const dateInput = document.getElementById('date-input');
+                const btn = document.getElementById('modal-action');
+
+                overlay.classList.remove('hidden');
+                titleEl.innerText = "💾 保存回忆";
+                inputEl.classList.add('hidden');
+                descEl.classList.remove('hidden');
+                descEl.innerText = "我们要把今天的侦探画板存起来吗？";
+                datePicker.classList.remove('hidden');
+                
+                // 替换按钮防止重复绑定
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+
+                newBtn.onclick = () => {
+                    const date = dateInput.value;
+                    if (!date) return alert("请选择日期！");
+                    
+                    const snapshot = {
+                        nodes: JSON.parse(JSON.stringify(nodes)),
+                        links: JSON.parse(JSON.stringify(links))
+                    };
+
+                    const existingIdx = diaryHistory.findIndex(d => d.date === date);
+                    if (existingIdx >= 0) {
+                        // 合并逻辑：简单的覆盖或追加？这里选择覆盖当前日记的快照，但通常应该更智能
+                        // 简化处理：更新该日内容
+                        diaryHistory[existingIdx] = { ...snapshot, date, timestamp: Date.now() };
+                    } else {
+                        diaryHistory.unshift({ ...snapshot, date, timestamp: Date.now() });
+                    }
+                    
+                    // 排序
+                    diaryHistory.sort((a,b) => new Date(b.date) - new Date(a.date));
+                    localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(diaryHistory));
+                    
+                    closeModal();
+                    
+                    // 飞入日记本的动画反馈 (可选)
+                    app.toggleView('diary');
+                };
+            }
+
+            function renderDiaryList() {
+                const list = document.getElementById('diary-list');
+                const count = document.getElementById('diary-count');
+                list.innerHTML = '';
+                count.innerText = diaryHistory.length + "篇";
+
+                if (diaryHistory.length === 0) {
+                    list.innerHTML = `<div class="flex flex-col items-center justify-center py-20 opacity-50"><div class="text-6xl mb-4">📭</div><p>还没有日记哦，快去画板记录吧！</p></div>`;
+                    return;
+                }
+
+                diaryHistory.forEach((item, idx) => {
+                    const div = document.createElement('div');
+                    div.className = "diary-card p-5 rounded-2xl shadow-sm border border-gray-100 relative";
+                    
+                    // 分析内容
+                    const meNode = item.nodes.find(n => n.id === ME_ID);
+                    const actionCount = item.links.length;
+                    const peopleCount = item.nodes.filter(n => n.type === 'person' && n.id !== ME_ID).length;
+                    
+                    div.innerHTML = `
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <h3 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                                    <span class="bg-yellow-100 text-yellow-700 text-xs px-2 py-1 rounded-md">${item.date}</span>
+                                </h3>
+                            </div>
+                            <button onclick="app.deleteDiary(${idx})" class="text-gray-300 hover:text-red-500 transition px-2 text-xl">&times;</button>
+                        </div>
+                        <div class="text-gray-600 text-sm mb-4 bg-white/50 p-3 rounded-lg border border-gray-50">
+                            🕵️ 发现了 ${peopleCount} 个朋友，记录了 ${actionCount} 个互动。
+                        </div>
+                        <div class="flex justify-end">
+                            <button onclick="app.loadDiary(${idx})" class="bg-blue-50 text-blue-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-blue-100 transition flex items-center gap-1">
+                                <span>👀</span> 查看当时的画板
+                            </button>
+                        </div>
+                    `;
+                    list.appendChild(div);
+                });
+            }
+
+            function loadDiary(idx) {
+                showDialog({
+                    title: "⏳ 时光倒流",
+                    desc: "确定要回到这一天吗？当前画板上没保存的内容会消失哦。",
+                    isConfirm: true,
+                    onConfirm: () => {
+                        const item = diaryHistory[idx];
+                        nodes = JSON.parse(JSON.stringify(item.nodes));
+                        links = JSON.parse(JSON.stringify(item.links));
+                        saveDraft();
+                        toggleView('board');
+                        return true;
+                    }
+                });
+            }
+
+            function deleteDiary(idx) {
+                showDialog({
+                    title: "🗑️ 撕掉这页",
+                    desc: "确定要删除这篇日记吗？",
+                    isConfirm: true,
+                    onConfirm: () => {
+                        diaryHistory.splice(idx, 1);
+                        localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(diaryHistory));
+                        renderDiaryList();
+                        return true;
+                    }
+                });
+            }
+
+            function clearBoard() {
+                showDialog({
+                    title: "🧹 大扫除",
+                    desc: "确定要清空画布吗？",
+                    isConfirm: true,
+                    onConfirm: () => {
+                        nodes = []; links = []; ensureMeNode(); saveDraft(); return true;
+                    }
+                });
+            }
+
+            // --- 通用 ---
+            function showEmojiPicker(type, callback) {
+                const el = document.getElementById('emoji-overlay');
                 const grid = document.getElementById('emoji-grid');
+                const title = document.getElementById('emoji-title');
+                
+                el.classList.remove('hidden');
                 grid.innerHTML = '';
-                EMOJI_LIB[type].forEach(emoji => {
-                    const btn = document.createElement('div');
+                title.innerText = type === 'fruit' ? "🍊 变身" : "✨ 选择贴纸";
+                
+                const list = EMOJI_LIB[type] || EMOJI_LIB['person'];
+                list.forEach(emoji => {
+                    const btn = document.createElement('button');
                     btn.innerText = emoji;
-                    btn.className = "emoji-btn text-3xl h-12 w-12 flex items-center justify-center";
+                    btn.className = "text-3xl h-12 w-12 flex items-center justify-center hover:bg-gray-100 rounded-xl transition active:scale-90";
                     btn.onclick = () => {
-                        let color = '#fff';
-                        if (type === 'person') color = ['#FF6B6B', '#4ECDC4', '#FFD93D', '#a29bfe'][Math.floor(Math.random()*4)];
-                        if (type === 'result') color = '#FFD93D';
-                        if (pendingNodeCreation) createNode(type, emoji, color, pendingNodeCreation.x, pendingNodeCreation.y);
-                        document.getElementById('emoji-overlay').classList.add('hidden');
-                        pendingNodeCreation = null;
+                        callback(emoji);
+                        el.classList.add('hidden');
                     }
                     grid.appendChild(btn);
                 });
-                document.getElementById('emoji-overlay').classList.remove('hidden');
             }
 
-            // 修复了弹窗逻辑：增加了 confirmText 参数，并强制更新 innerText
-            function showDialog({ title, desc, inputValue, onConfirm, isDelete, confirmText }) {
-                const el = (id) => document.getElementById(id);
-                el('modal-overlay').classList.remove('hidden');
-                el('modal-title').innerText = title;
-                const btn = el('modal-action');
-
-                if (isDelete) {
-                    el('modal-input').classList.add('hidden');
-                    el('modal-desc').classList.remove('hidden');
-                    el('modal-desc').innerText = desc;
-                    btn.className = "px-4 py-2 bg-red-500 text-white rounded font-bold shadow-md";
-                } else {
-                    el('modal-input').classList.remove('hidden');
-                    el('modal-desc').classList.add('hidden');
-                    el('modal-input').value = inputValue || "";
-                    btn.className = "px-4 py-2 bg-blue-500 text-white rounded font-bold shadow-md";
-                }
-
-                // 关键修复：强制更新按钮文字
-                btn.innerText = confirmText || (isDelete ? "删除" : "确定");
-
-                btn.onclick = () => {
-                    if (!isDelete) onConfirm(el('modal-input').value);
-                    else onConfirm();
-                    closeModal();
-                }
+            function saveDraft() {
+                localStorage.setItem(STORAGE_KEY_DRAFT, JSON.stringify({ nodes, links }));
             }
-            function closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
-            
-            function clearBoard() {
-                showDialog({
-                    title: "🗑️ 重置画板",
-                    desc: "只保留“我”，清空其他所有内容？",
-                    isDelete: true,
-                    onConfirm: () => { nodes = []; links = []; ensureMeNode(); saveAutoSave(); },
-                    confirmText: "清空" // 修复了这里的文案
-                });
-            }
-
-            // 升级了序列化方法：解决中文乱码问题
-            function utf8_to_b64(str) {
-                return window.btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g,
-                    function toSolidBytes(match, p1) {
-                        return String.fromCharCode('0x' + p1);
-                }));
-            }
-            function b64_to_utf8(str) {
-                return decodeURIComponent(atob(str).split('').map(function(c) {
-                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-                }).join(''));
-            }
-            
-            function saveAutoSave() {
-                const data = getCleanData();
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-            }
-            function loadAutoSave() {
+            function loadDraft() {
                 try {
-                    const raw = localStorage.getItem(STORAGE_KEY);
-                    if (raw) {
-                        const data = JSON.parse(raw);
-                        nodes = data.nodes || [];
-                        links = data.links || [];
+                    const raw = localStorage.getItem(STORAGE_KEY_DRAFT);
+                    if(raw) {
+                        const d = JSON.parse(raw);
+                        nodes = d.nodes || []; links = d.links || [];
                     }
                 } catch(e) {}
             }
-
-            function exportData() {
-                const data = getCleanData();
-                const code = utf8_to_b64(JSON.stringify(data));
-                showDialog({
-                    title: "📤 保存日记 (已修复中文)",
-                    inputValue: code,
-                    onConfirm: () => {
-                        document.getElementById('modal-input').select();
-                        document.execCommand('copy');
-                        alert("复制成功！");
-                    },
-                    confirmText: "复制" // 通过参数传递按钮文字，不再修改 DOM
-                });
+            function loadHistory() {
+                try {
+                    const raw = localStorage.getItem(STORAGE_KEY_HISTORY);
+                    if(raw) diaryHistory = JSON.parse(raw);
+                } catch(e) {}
             }
 
-            function showImport() {
-                showDialog({
-                    title: "📥 读取回忆",
-                    inputValue: "",
-                    onConfirm: (val) => {
-                        if (!val) return;
-                        try {
-                            const data = JSON.parse(b64_to_utf8(val));
-                            if (data.nodes) {
-                                nodes = data.nodes; links = data.links || [];
-                                ensureMeNode(); saveAutoSave();
-                                alert("读取成功！");
-                            }
-                        } catch (e) { alert("数据格式错误，可能是旧版本的代码"); console.error(e); }
-                    },
-                    confirmText: "读取"
-                });
-                document.getElementById('modal-input').placeholder = "粘贴代码...";
-            }
-
-            return { 
-                init, setMode, handleDragStart, handleDragOver, handleDrop, 
-                handleTouchDragStart, 
-                clearBoard, exportData, showImport, closeModal, showEmojiPicker 
+            return {
+                init, toggleView, setMode, addNode,
+                saveToDiary, loadDiary, deleteDiary, clearBoard, closeModal
             };
         })();
 
