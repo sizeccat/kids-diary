@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -245,7 +244,6 @@
 
             const EMOJI_LIB = {
                 person: ["👶","👧","🧒","👦","👩","🧑","👨","👵","🧓","👴","👮","👩‍⚕️","🧑‍🏫","👨‍🍳","🦸","🧙","🧚","👻","🤖","👸","🐶","🐱"],
-                // 新增了乐器相关的图标
                 event: ["🎹","🎸","🎻","🎺","🥁","🎤","🎼","🎧","⚽","🏀","🎨","🎬","🎮","📚","🏫","🥪","🎂","🎁","📱","🚌","🏖️","🏥","🧸"],
                 fruit: ["🍊","🍎","🍐","🍋","🍌","🍉","🍇","🍓","🫐","🍈","🍒","🍑","🥭","🍍","🥥","🥝"],
                 group: ["🚩","🏠","🏕️","🚤","🚀","🏰","🏟️","🏫","🌳"]
@@ -255,6 +253,8 @@
             let links = [];
             let width, height;
             let mode = 'move';
+            // 修复 BUG：显式定义 diaryHistory，防止首次加载崩溃
+            let diaryHistory = []; 
             
             const state = {
                 draggingNode: null,
@@ -299,7 +299,12 @@
                 const now = new Date();
                 const options = { weekday: 'short', month: 'numeric', day: 'numeric' };
                 document.getElementById('date-display').innerText = now.toLocaleDateString('zh-CN', options);
-                document.getElementById('date-input').valueAsDate = new Date();
+                
+                // 优化：手动设置 value 字符串，解决部分安卓浏览器 input date 无法自动获取默认值的问题
+                const y = now.getFullYear();
+                const m = String(now.getMonth() + 1).padStart(2, '0');
+                const d = String(now.getDate()).padStart(2, '0');
+                document.getElementById('date-input').value = `${y}-${m}-${d}`;
             }
 
             function resize() {
@@ -825,13 +830,23 @@
                 btn.parentNode.replaceChild(newBtn, btn);
 
                 newBtn.onclick = () => {
-                    const date = dateInput.value;
-                    if (!date) return alert("请选择日期！");
+                    let date = dateInput.value;
+                    // 兜底逻辑：如果日期输入框失效（空），强制使用今天
+                    if (!date) {
+                         const now = new Date();
+                         const y = now.getFullYear();
+                         const m = String(now.getMonth() + 1).padStart(2, '0');
+                         const d = String(now.getDate()).padStart(2, '0');
+                         date = `${y}-${m}-${d}`;
+                    }
                     
                     const snapshot = {
                         nodes: JSON.parse(JSON.stringify(nodes)),
                         links: JSON.parse(JSON.stringify(links))
                     };
+
+                    // 安全检查，防止 diaryHistory 未定义
+                    if (!diaryHistory) diaryHistory = [];
 
                     const existingIdx = diaryHistory.findIndex(d => d.date === date);
                     if (existingIdx >= 0) {
@@ -851,6 +866,10 @@
                 const list = document.getElementById('diary-list');
                 const count = document.getElementById('diary-count');
                 list.innerHTML = '';
+                
+                // 安全检查
+                if (!diaryHistory) diaryHistory = [];
+
                 count.innerText = diaryHistory.length + "篇";
 
                 if (diaryHistory.length === 0) {
